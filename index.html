@@ -149,7 +149,7 @@
     };
 
     // ==========================================
-    // 1.5 - 1.6 問題生成ロジック (プレフェッチ・教科バグ修正済)
+    // 1.5 - 1.6 問題生成ロジック (最強AI設定・ループ防止)
     // ==========================================
     const generateMathQuestion = (grade) => {
       let q = ""; let correct = 0;
@@ -197,37 +197,44 @@
     const generateQuestionWithAI = async (subjectName, gradeName, historyList, isChallenge = false) => {
       if(!geminiApiKey) return null;
 
+      // 最新の安定・高速モデルを使用
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-      const historyStr = historyList.slice(-15).join(', ');
+      const historyStr = historyList.slice(-15).join(', '); // 過去15問を避ける
       const randomTheme = AI_THEMES[Math.floor(Math.random() * AI_THEMES.length)];
-      const randomSeed = Math.floor(Math.random() * 99999);
+      const randomSeed = Math.floor(Math.random() * 999999); // 強制的に違う発想をさせる
 
       let prompt = `あなたは日本の${gradeName}向けの${subjectName}の先生です。
-以下の条件で4択問題を1つ作成してください。
-- 【重要】問題の切り口として「${randomTheme}」に関連づけた、面白くて新鮮な問題文にしてください。
-- 過去の出題: [${historyStr}]
-- 過去の出題とは「絶対に違う」内容にしてください。
-- シード値: ${randomSeed} (この値が違うたびに全く新しい発想をしてください)
-- 必ず以下の形式のJSONデータだけを返してください。
-{"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
+面白い4択問題を1つ作成してください。
+- 切り口（テーマ）: 「${randomTheme}」
+- 以下の過去に出題された問題とは「絶対に違う」新しい問題を作ること: [${historyStr}]
+- シード値: ${randomSeed}`;
 
       if (isChallenge) {
         prompt = `あなたは超難問を出題するクイズマスターです。
-以下の条件で4択問題を1つ作成してください。
-- ジャンルは問わず、大人が間違えるレベルの非常に難しい問題（難読漢字、複雑な計算、マニアックな理科社会の知識、ひっかけ問題など）にしてください。
-- 【重要】問題の切り口に「${randomTheme}」の要素を少し混ぜてください。
-- 過去の出題: [${historyStr}]
-- 過去の出題とは「絶対に違う」内容にしてください。
-- シード値: ${randomSeed}
-- 必ず以下の形式のJSONデータだけを返してください。
-{"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
+大人が間違えるレベルの非常に難しい4択問題を1つ作成してください。
+- ジャンルは問わず、ひっかけや難読漢字、マニアックな知識を問うもの。
+- 切り口（テーマ）: 「${randomTheme}」
+- 以下の過去に出題された問題とは「絶対に違う」新しい問題を作ること: [${historyStr}]
+- シード値: ${randomSeed}`;
       }
 
       const payload = { 
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           responseMimeType: "application/json",
-          temperature: 1.2
+          // ここが最強の魔法。AIに「この形以外の回答を許さない」と強制する。
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              q: { type: "STRING" },
+              correct: { type: "STRING" },
+              w1: { type: "STRING" },
+              w2: { type: "STRING" },
+              w3: { type: "STRING" }
+            },
+            required: ["q", "correct", "w1", "w2", "w3"]
+          },
+          temperature: 1.2 // 想像力を上げて毎回違う問題を作らせる
         }
       };
       
@@ -241,21 +248,16 @@
         
         const result = await response.json();
         if (result.candidates && result.candidates.length > 0) {
-          let text = result.candidates[0].content.parts[0].text;
-          try {
-             return JSON.parse(text);
-          } catch (e) {
-             const firstBrace = text.indexOf('{');
-             const lastBrace = text.lastIndexOf('}');
-             if (firstBrace !== -1 && lastBrace !== -1) {
-                return JSON.parse(text.substring(firstBrace, lastBrace + 1));
-             }
-          }
+          const text = result.candidates[0].content.parts[0].text;
+          return JSON.parse(text); // schema機能により、必ず綺麗なJSONが返ってくる
         }
-      } catch (error) { console.error("AI Communication Error", error); }
+      } catch (error) { 
+        console.error("AI Communication Error", error); 
+      }
       return null;
     };
 
+    // AIがエラーで止まった時のための予備問題（大増量）
     const BUILT_IN_QUESTIONS = [
       { subject: 'kokugo', grade: 'g1_2', q: "「やま」の漢字はどれ？", correct: "山", w1: "川", w2: "田", w3: "石" },
       { subject: 'kokugo', grade: 'g1_2', q: "「いぬ」の漢字はどれ？", correct: "犬", w1: "大", w2: "太", w3: "木" },
@@ -1014,6 +1016,7 @@
         }
 
         if (!q) {
+          // AIが失敗した場合は、絶対に「選んだ教科」の予備問題から出す
           if (params.subject === 'sansu' && !isChallenge) {
             q = generateMathQuestion(params.grade.id);
           } else {
