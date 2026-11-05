@@ -886,12 +886,10 @@
     function BattleScreen({ profile, saveProfile, params, allQuestions, onEnd }) {
       const levelData = useMemo(() => getLevelData(profile.exp), [profile.exp]);
       
-      const getEquippedItem = (type) => ITEMS[type].find(i => i.id === profile.equipped[type]) || ITEMS[type][0];
+      const equippedHead = ITEMS.head.find(i => i.id === profile.equipped.head) || ITEMS.head[0];
+      const equippedBody = ITEMS.body.find(i => i.id === profile.equipped.body) || ITEMS.body[0];
+      const equippedWeapon = ITEMS.weapon.find(i => i.id === profile.equipped.weapon) || ITEMS.weapon[0];
       const getEquippedPet = () => PETS.find(p => p.id === profile.equipped.pet) || PETS[0];
-
-      const equippedHead = getEquippedItem('head');
-      const equippedBody = getEquippedItem('body');
-      const equippedWeapon = getEquippedItem('weapon');
 
       const totalMaxHp = levelData.maxHp + equippedHead.bonus;
       const totalMaxMp = levelData.maxMp + getEquippedPet().bonus;
