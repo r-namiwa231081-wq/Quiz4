@@ -197,7 +197,6 @@
     const generateQuestionWithAI = async (subjectName, gradeName, historyList, isChallenge = false) => {
       if(!geminiApiKey) return null;
 
-      // 安定・高速の 1.5-flash にモデルを変更
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
       const historyStr = historyList.slice(-15).join(', ');
       const randomTheme = AI_THEMES[Math.floor(Math.random() * AI_THEMES.length)];
@@ -207,8 +206,8 @@
 - 【重要】問題の切り口として「${randomTheme}」に関連づけた、面白くて新鮮な問題文にしてください。
 - 過去に出題された以下の問題とは「絶対に違う」内容にしてください。
 - 過去の出題: [${historyStr}]
-- 返却は必ず以下のJSONスキーマのみを含めてください。マークダウンの装飾(\`\`\`json)などは不要です。
-- {"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
+- 必ず以下の形式のJSON文字列「だけ」を返してください。前後の説明やマークダウン(\`\`\`json)は絶対に書かないでください。
+{"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
 
       if (isChallenge) {
         prompt = `あなたは超難問を出題するクイズマスターです。
@@ -217,27 +216,37 @@
 - 【重要】問題の切り口に「${randomTheme}」の要素を少し混ぜてください。
 - 過去に出題された以下の問題とは「絶対に違う」内容にしてください。
 - 過去の出題: [${historyStr}]
-- 返却は必ず以下のJSONスキーマのみを含めてください。マークダウンの装飾(\`\`\`json)などは不要です。
-- {"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
+- 必ず以下の形式のJSON文字列「だけ」を返してください。前後の説明やマークダウン(\`\`\`json)は絶対に書かないでください。
+{"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
       }
 
-      const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } };
+      const payload = { contents: [{ parts: [{ text: prompt }] }] };
+      
       try {
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        
+        if (!response.ok) {
+           console.error("API Request Failed:", await response.text());
+           return null;
+        }
+        
         const result = await response.json();
         if (result.candidates && result.candidates.length > 0) {
-          let jsonStr = result.candidates[0].content.parts[0].text;
-          try {
-            let cleanStr = jsonStr.replace(/```json/gi, '').replace(/```/g, '').trim();
-            if (cleanStr.includes('}\n{') || cleanStr.includes('}{')) cleanStr = `[${cleanStr.replace(/\}\s*\{/g, '},{')}]`;
-            const parsed = JSON.parse(cleanStr);
-            return Array.isArray(parsed) ? parsed[0] : parsed;
-          } catch (parseError) {
-            const match = jsonStr.match(/\{[^{}]*\}/);
-            if (match) return JSON.parse(match[0]);
+          let text = result.candidates[0].content.parts[0].text;
+          
+          // ★AIの返答から確実に { } で囲まれたJSON部分だけを抜き出す最強の抽出ロジック★
+          const firstBrace = text.indexOf('{');
+          const lastBrace = text.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1) {
+             const jsonString = text.substring(firstBrace, lastBrace + 1);
+             try {
+                return JSON.parse(jsonString);
+             } catch (e) {
+                console.error("JSON Parse Error:", e, jsonString);
+             }
           }
         }
-      } catch (error) { console.error("AI Error", error); }
+      } catch (error) { console.error("AI Communication Error", error); }
       return null;
     };
 
@@ -886,10 +895,12 @@
     function BattleScreen({ profile, saveProfile, params, allQuestions, onEnd }) {
       const levelData = useMemo(() => getLevelData(profile.exp), [profile.exp]);
       
-      const equippedHead = ITEMS.head.find(i => i.id === profile.equipped.head) || ITEMS.head[0];
-      const equippedBody = ITEMS.body.find(i => i.id === profile.equipped.body) || ITEMS.body[0];
-      const equippedWeapon = ITEMS.weapon.find(i => i.id === profile.equipped.weapon) || ITEMS.weapon[0];
+      const getEquippedItem = (type) => ITEMS[type].find(i => i.id === profile.equipped[type]) || ITEMS[type][0];
       const getEquippedPet = () => PETS.find(p => p.id === profile.equipped.pet) || PETS[0];
+
+      const equippedHead = getEquippedItem('head');
+      const equippedBody = getEquippedItem('body');
+      const equippedWeapon = getEquippedItem('weapon');
 
       const totalMaxHp = levelData.maxHp + equippedHead.bonus;
       const totalMaxMp = levelData.maxMp + getEquippedPet().bonus;
