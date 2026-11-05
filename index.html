@@ -66,7 +66,6 @@
       { id: 'g5', name: '小学5年', expReward: 60, coinReward: 40 },
     ];
 
-    // Robohash API を用いたリアルなモンスター画像
     const MONSTERS = [
       { name: 'ゴブリン', img: 'https://robohash.org/goblin.png?set=set2&size=200x200', hp: 30, damage: 5, isBoss: false },
       { name: 'スライム', img: 'https://robohash.org/slime.png?set=set3&size=200x200', hp: 20, damage: 3, isBoss: false },
@@ -90,7 +89,6 @@
       'UR': { color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-400', label: 'UR' },
     };
 
-    // 価格を約5倍に引き上げ（インフレ調整）
     const ITEMS = {
       head: [
         { id: 'h_none', name: 'なし', emoji: '🧑', price: 0, rank: 'N', bonus: 0 },
@@ -151,7 +149,6 @@
       missions: { date: new Date().toLocaleDateString(), battles: 0, corrects: 0, claimed: [] }
     };
 
-    // 算数用ランダム問題生成
     const generateMathQuestion = (grade) => {
       let q = ""; let correct = 0;
       const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -195,7 +192,6 @@
       "食べ物・料理", "生活の工夫", "世界の国々", "言葉あそび", "数字のパズル"
     ];
 
-    // ★ 修正版 Gemini AI 生成関数（最新モデル gemini-1.5-flash 使用） ★
     const generateQuestionWithAI = async (subjectName, gradeName, historyList = [], isChallenge = false) => {
       if (!geminiApiKey) return null;
 
@@ -234,10 +230,7 @@
           body: JSON.stringify(payload)
         });
         
-        if (!response.ok) {
-          console.error("Gemini API Error:", response.status, response.statusText);
-          return null;
-        }
+        if (!response.ok) return null;
 
         const result = await response.json();
         if (result.candidates && result.candidates.length > 0) {
@@ -251,12 +244,11 @@
           }
         }
       } catch (error) {
-        console.error("AI Communication Failed:", error);
+        console.error("AI Error:", error);
       }
       return null;
     };
 
-    // 各教科豊富なフォールバック問題データ
     const BUILT_IN_QUESTIONS = [
       { subject: 'kokugo', grade: 'g1_2', q: "「やま」の漢字はどれ？", correct: "山", w1: "川", w2: "田", w3: "石" },
       { subject: 'kokugo', grade: 'g1_2', q: "「川」の読み方はどれ？", correct: "かわ", w1: "やま", w2: "うみ", w3: "そら" },
@@ -274,7 +266,7 @@
       { subject: 'challenge', grade: 'g5', q: "1から100までの整数をすべて足すといくつになる？", correct: "5050", w1: "5000", w2: "5100", w3: "5500" },
     ];
 
-    const getLevelData = (totalExp) => {
+    const getLevelData = (totalExp = 0) => {
       let level = 1; let expForNext = 50; let currentBase = 0;
       while (totalExp >= currentBase + expForNext) { currentBase += expForNext; level++; expForNext = Math.floor(expForNext * 1.5); }
       return { level, expInCurrentLevel: totalExp - currentBase, expForNext, maxHp: 50 + (level - 1) * 20, maxMp: 30 + (level - 1) * 10, baseDamage: 10 + (level - 1) * 5 };
@@ -284,6 +276,17 @@
       const newArr = [...array];
       for (let i = newArr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [newArr[i], newArr[j]] = [newArr[j], newArr[i]]; }
       return newArr;
+    };
+
+    // 安全ヘパー関数
+    const safeGetEquippedItem = (profile, type) => {
+      if (!profile || !profile.equipped || !profile.equipped[type]) return ITEMS[type][0];
+      return ITEMS[type].find(i => i.id === profile.equipped[type]) || ITEMS[type][0];
+    };
+
+    const safeGetEquippedPet = (profile) => {
+      if (!profile || !profile.equipped || !profile.equipped.pet) return PETS[0];
+      return PETS.find(p => p.id === profile.equipped.pet) || PETS[0];
     };
 
     // ==========================================
@@ -306,7 +309,7 @@
               try {
                 const doc = await db.collection('players').doc(localData.name).get();
                 if (doc.exists) setProfile(doc.data());
-              } catch(e) { console.error("Firebase読み込みエラー", e); }
+              } catch(e) { console.error("Firebase Error", e); }
             }
           }
           const savedQuestions = localStorage.getItem('studyQuest_customQuestions');
@@ -321,7 +324,7 @@
         
         if (db && newProfile.name) {
           db.collection('players').doc(newProfile.name).set(newProfile)
-            .catch(err => console.error("Firebase保存エラー:", err));
+            .catch(err => console.error("Firebase Error", err));
         }
       };
 
@@ -336,31 +339,26 @@
       };
 
       const handleTransfer = async (transferName) => {
-        if (!db) {
-          alert("Firebaseの設定がまだ完了していません。");
-          return;
-        }
+        if (!db) { alert("Firebaseの設定が完了していません。"); return; }
         try {
           const doc = await db.collection('players').doc(transferName).get();
           if (doc.exists) {
             saveProfile(doc.data());
             setView('map');
-            alert("データの引き継ぎに成功しました！");
-          } else {
-            alert("その名前のデータは見つかりませんでした。");
-          }
-        } catch(e) {
-          alert("エラーが発生しました。");
-        }
+            alert("引き継ぎ成功！");
+          } else { alert("見つかりませんでした。"); }
+        } catch(e) { alert("エラーが発生しました。"); }
       };
 
       if (view === 'title') return <TitleScreen profile={profile} onStart={() => profile ? setView('map') : setView('create')} onTeacher={() => setView('teacher')} onTransfer={handleTransfer} dbReady={!!db} aiReady={!!geminiApiKey} />;
       if (view === 'create') return <CreateScreen onSubmit={handleCreateProfile} onBack={() => setView('title')} />;
       if (view === 'teacher') return <TeacherScreen customQuestions={customQuestions} saveCustomQuestions={saveCustomQuestions} onBack={() => setView('title')} />;
-      if (view === 'shop') return <ShopScreen profile={profile} saveProfile={saveProfile} onBack={() => setView('map')} />;
-      if (view === 'battle' && battleParams) return <BattleScreen profile={profile} saveProfile={saveProfile} params={battleParams} allQuestions={[...BUILT_IN_QUESTIONS, ...customQuestions]} onEnd={() => setView('map')} />;
+      if (view === 'shop' && profile) return <ShopScreen profile={profile} saveProfile={saveProfile} onBack={() => setView('map')} />;
+      if (view === 'battle' && battleParams && profile) return <BattleScreen profile={profile} saveProfile={saveProfile} params={battleParams} allQuestions={[...BUILT_IN_QUESTIONS, ...customQuestions]} onEnd={() => setView('map')} />;
       
-      return <MapScreen profile={profile} onSelectBattle={(params) => { setBattleParams(params); setView('battle'); }} onShop={() => setView('shop')} onBack={() => setView('title')} saveProfile={saveProfile} me={profile} />;
+      if (profile) return <MapScreen profile={profile} onSelectBattle={(params) => { setBattleParams(params); setView('battle'); }} onShop={() => setView('shop')} onBack={() => setView('title')} saveProfile={saveProfile} />;
+      
+      return <CreateScreen onSubmit={handleCreateProfile} onBack={() => setView('title')} />;
     }
 
     // ==========================================
@@ -379,7 +377,6 @@
 
       return (
         <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center font-sans text-white p-4 relative overflow-hidden">
-          
           <div className="absolute top-4 right-4 bg-gray-800 border border-gray-600 px-3 py-1 rounded-full flex items-center gap-2 text-sm font-bold shadow-md">
             <span>🧠 AI生成:</span>
             {aiReady ? (
@@ -391,7 +388,7 @@
 
           {showPrompt && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-              <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl animate-fade-in border-4 border-blue-500">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl border-4 border-blue-500">
                 <h3 className="text-2xl font-black text-gray-800 mb-2">先生モード</h3>
                 <p className="text-sm font-bold text-gray-500 mb-6">暗証番号を入力してください</p>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border-4 border-gray-200 rounded-xl p-3 text-3xl tracking-widest text-center mb-6 font-black text-gray-800 focus:border-blue-500 outline-none" placeholder="****" maxLength={4} />
@@ -405,7 +402,7 @@
 
           {showTransfer && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-              <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl animate-fade-in border-4 border-green-500">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl border-4 border-green-500">
                 <h3 className="text-2xl font-black text-gray-800 mb-2">クラウドから読み込む</h3>
                 <p className="text-sm font-bold text-gray-500 mb-6">ひきつぎたい「なまえ」を入力してね</p>
                 <input type="text" value={transferName} onChange={(e) => setTransferName(e.target.value)} className="w-full border-4 border-gray-200 rounded-xl p-3 text-xl text-center mb-6 font-black text-gray-800 outline-none" placeholder="勇者のなまえ" />
@@ -431,8 +428,6 @@
           <button onClick={() => setShowTransfer(true)} className={`${dbReady ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-gray-800 text-gray-400'} font-bold py-2 px-6 rounded-lg shadow-md transition-all flex items-center gap-2 text-sm`}>
             <span>☁️</span> データを引き継ぐ (Firebase)
           </button>
-          
-          <style>{`.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; } @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }`}</style>
         </div>
       );
     }
@@ -445,7 +440,7 @@
             <h2 className="text-2xl font-black text-gray-800 mb-6">きみのなまえは？</h2>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border-4 border-gray-300 rounded-xl p-4 text-2xl font-bold text-center mb-6 focus:border-blue-500 focus:outline-none" placeholder="勇者のなまえ" maxLength={10} />
             <button onClick={() => name.trim() && onSubmit(name)} disabled={!name.trim()} className="w-full bg-green-500 disabled:bg-gray-300 text-white font-black text-2xl py-4 rounded-xl shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-2 active:shadow-none transition-all">けってい！</button>
-            <button onClick={onBack} className="mt-4 text-gray-400 font-bold hover:text-gray-600">もどる</button>
+            {onBack && <button onClick={onBack} className="mt-4 text-gray-400 font-bold hover:text-gray-600">もどる</button>}
           </div>
         </div>
       );
@@ -456,10 +451,7 @@
 
       const handleAdd = (e) => {
         e.preventDefault();
-        if (!form.q || !form.correct || !form.w1 || !form.w2 || !form.w3) {
-          alert("すべての項目を入力してください。");
-          return;
-        }
+        if (!form.q || !form.correct || !form.w1 || !form.w2 || !form.w3) { alert("すべての項目を入力してください。"); return; }
         const newQ = { ...form, id: Date.now().toString() };
         saveCustomQuestions([...customQuestions, newQ]);
         setForm({ ...form, q: '', correct: '', w1: '', w2: '', w3: '' });
@@ -473,7 +465,7 @@
         <div className="min-h-screen bg-gray-100 p-4 font-sans text-gray-800 pb-20">
           <div className="max-w-2xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-black text-gray-800 flex items-center gap-2"><span className="text-4xl">👨‍🏫</span> 先生モード</h2>
+              <h2 className="text-3xl font-black text-gray-800 flex items-center gap-2"><span>👨‍🏫</span> 先生モード</h2>
               <button onClick={onBack} className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold">タイトルへ戻る</button>
             </div>
 
@@ -524,122 +516,40 @@
                 </button>
               </form>
             </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-md">
-              <h3 className="text-xl font-bold mb-4 border-b pb-2">作成した問題一覧 ({customQuestions.length}問)</h3>
-              {customQuestions.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">まだ作成された問題はありません。</p>
-              ) : (
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                  {customQuestions.map(q => (
-                    <div key={q.id} className="border border-gray-200 p-4 rounded-xl relative hover:bg-gray-50">
-                      <div className="text-xs text-gray-500 mb-1 font-bold">
-                        {SUBJECTS.find(s=>s.id===q.subject)?.name} / {GRADES.find(g=>g.id===q.grade)?.name}
-                      </div>
-                      <div className="font-bold text-lg mb-2">{q.q}</div>
-                      <div className="text-sm grid grid-cols-2 gap-2">
-                        <span className="text-red-600 font-bold bg-red-50 p-1 rounded">〇: {q.correct}</span>
-                        <span className="text-gray-600 bg-gray-100 p-1 rounded">×: {q.w1}</span>
-                      </div>
-                      <button onClick={() => handleDelete(q.id)} className="absolute top-4 right-4 text-red-400 hover:text-red-600 font-bold text-sm bg-red-50 px-2 py-1 rounded">削除</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       );
     }
 
     function MapScreen({ profile, onSelectBattle, onShop, onBack, saveProfile }) {
-      const levelData = getLevelData(profile.exp);
+      const levelData = getLevelData(profile?.exp || 0);
       const [selectedSubject, setSelectedSubject] = useState(null);
       const [idleReward, setIdleReward] = useState(0);
-      const [showMissions, setShowMissions] = useState(false);
 
       useEffect(() => {
         const now = Date.now();
-        const lastPlay = profile.lastPlayTime || now;
+        const lastPlay = profile?.lastPlayTime || now;
         const mins = Math.floor((now - lastPlay) / 60000);
-        
-        if (mins >= 1) {
-          setIdleReward(Math.min(mins * 2, 1000));
-        } else if (!profile.lastPlayTime) {
-          saveProfile({ ...profile, lastPlayTime: now });
-        }
+        if (mins >= 1) setIdleReward(Math.min(mins * 2, 1000));
       }, []);
 
       const handleClaimIdle = () => {
-        saveProfile({ ...profile, coins: profile.coins + idleReward, lastPlayTime: Date.now() });
+        saveProfile({ ...profile, coins: (profile.coins || 0) + idleReward, lastPlayTime: Date.now() });
         setIdleReward(0);
       };
 
-      const today = new Date().toLocaleDateString();
-      const currentMissions = profile.missions?.date === today ? profile.missions : { date: today, battles: 0, corrects: 0, claimed: [] };
-      
-      const claimMission = (missionId, reward) => {
-        saveProfile({
-          ...profile,
-          coins: profile.coins + reward,
-          missions: { ...currentMissions, claimed: [...(currentMissions.claimed || []), missionId] }
-        });
-      };
-
-      const getEquippedItem = (type) => ITEMS[type].find(i => i.id === profile.equipped?.[type]) || ITEMS[type][0];
-      const getEquippedPet = () => PETS.find(p => p.id === profile.equipped?.pet) || PETS[0];
+      const headItem = safeGetEquippedItem(profile, 'head');
+      const petItem = safeGetEquippedPet(profile);
 
       return (
         <div className="min-h-screen bg-green-50 font-sans flex flex-col pb-20 relative">
-          
           {idleReward > 0 && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="bg-white rounded-3xl p-8 text-center animate-bounce shadow-2xl border-4 border-yellow-400 w-full max-w-sm">
+              <div className="bg-white rounded-3xl p-8 text-center shadow-2xl border-4 border-yellow-400 w-full max-w-sm">
                 <div className="text-6xl mb-4">💤</div>
                 <h3 className="text-2xl font-black text-yellow-600 mb-2">放置ボーナス！</h3>
-                <p className="text-gray-600 font-bold mb-4">休んでいた時間分、コインを発見したよ！</p>
                 <div className="text-4xl font-black text-yellow-500 mb-6">🪙 +{idleReward}</div>
-                <button onClick={handleClaimIdle} className="w-full bg-yellow-500 text-white font-black text-xl py-3 rounded-xl shadow-[0_4px_0_#b45309] active:translate-y-1 active:shadow-none transition-all">
-                  もらう
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showMissions && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-fade-in">
-                <button onClick={() => setShowMissions(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-black text-xl">✕</button>
-                <h3 className="text-2xl font-black text-gray-800 mb-4 flex items-center gap-2"><span>🎯</span> デイリーミッション</h3>
-                
-                <div className="space-y-3">
-                   <div className="border-2 border-gray-100 rounded-xl p-3 flex justify-between items-center">
-                      <div>
-                         <div className="font-bold text-gray-700 text-sm">バトルを1回クリアする</div>
-                         <div className="text-xs text-blue-500 font-black">{Math.min(currentMissions.battles, 1)} / 1</div>
-                      </div>
-                      {currentMissions.claimed?.includes('m1') ? (
-                         <span className="text-xs font-black text-gray-400 bg-gray-100 px-3 py-1 rounded-full">クリア済</span>
-                      ) : currentMissions.battles >= 1 ? (
-                         <button onClick={() => claimMission('m1', 50)} className="text-xs font-black text-white bg-green-500 hover:bg-green-600 px-3 py-1 rounded-full shadow-sm">🪙50 受取</button>
-                      ) : (
-                         <span className="text-xs font-black text-gray-400 bg-gray-100 px-3 py-1 rounded-full">未達成</span>
-                      )}
-                   </div>
-                   <div className="border-2 border-gray-100 rounded-xl p-3 flex justify-between items-center">
-                      <div>
-                         <div className="font-bold text-gray-700 text-sm">もんだいに10問せいかいする</div>
-                         <div className="text-xs text-blue-500 font-black">{Math.min(currentMissions.corrects, 10)} / 10</div>
-                      </div>
-                      {currentMissions.claimed?.includes('m2') ? (
-                         <span className="text-xs font-black text-gray-400 bg-gray-100 px-3 py-1 rounded-full">クリア済</span>
-                      ) : currentMissions.corrects >= 10 ? (
-                         <button onClick={() => claimMission('m2', 100)} className="text-xs font-black text-white bg-green-500 hover:bg-green-600 px-3 py-1 rounded-full shadow-sm">🪙100 受取</button>
-                      ) : (
-                         <span className="text-xs font-black text-gray-400 bg-gray-100 px-3 py-1 rounded-full">未達成</span>
-                      )}
-                   </div>
-                </div>
+                <button onClick={handleClaimIdle} className="w-full bg-yellow-500 text-white font-black text-xl py-3 rounded-xl">もらう</button>
               </div>
             </div>
           )}
@@ -647,29 +557,21 @@
           <div className="bg-white p-4 shadow-md rounded-b-3xl flex items-center justify-between z-10 relative">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-2xl relative border-2 border-gray-300">
-                <span className="absolute -top-3 z-30">{getEquippedItem('head').emoji !== '🧑' ? getEquippedItem('head').emoji : ''}</span>
+                <span className="absolute -top-3 z-30">{headItem.emoji !== '🧑' ? headItem.emoji : ''}</span>
                 <span className="z-20">🧑</span>
               </div>
               <div>
                 <div className="font-black text-gray-800 text-lg leading-none flex items-center gap-1">
-                  {profile.name} {getEquippedPet().emoji !== '🐾' && <span className="text-sm">{getEquippedPet().emoji}</span>}
+                  {profile.name} {petItem.emoji !== '🐾' && <span className="text-sm">{petItem.emoji}</span>}
                 </div>
-                <div className="text-xs font-bold text-blue-600">Lv.{levelData.level} <span className="text-gray-400">({profile.exp} EXP)</span></div>
+                <div className="text-xs font-bold text-blue-600">Lv.{levelData.level} <span className="text-gray-400">({profile.exp || 0} EXP)</span></div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowMissions(true)} className="bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-black text-sm flex items-center gap-1 shadow-inner relative">
-                 <span>🎯</span>
-                 {(!currentMissions.claimed?.includes('m1') && currentMissions.battles >= 1) || (!currentMissions.claimed?.includes('m2') && currentMissions.corrects >= 10) ? (
-                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></span>
-                 ) : null}
-              </button>
-              <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full font-black text-sm flex items-center gap-1 shadow-inner">
-                <span>🪙</span> {profile.coins}
+              <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full font-black text-sm flex items-center gap-1">
+                <span>🪙</span> {profile.coins || 0}
               </div>
-              <button onClick={onBack} className="text-gray-400 hover:text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-              </button>
+              <button onClick={onBack} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
           </div>
 
@@ -681,44 +583,20 @@
             {!selectedSubject ? (
               <div className="grid grid-cols-2 gap-4">
                 {SUBJECTS.map(subj => (
-                  <button
-                    key={subj.id}
-                    onClick={() => setSelectedSubject(subj.id)}
-                    className={`${subj.color} text-white rounded-3xl p-6 shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-2 active:shadow-none flex flex-col items-center justify-center gap-3 transition-transform ${subj.id === 'challenge' ? 'col-span-2' : ''}`}
-                  >
-                    <span className="text-5xl drop-shadow-md bg-white/20 p-4 rounded-full">{subj.icon}</span>
-                    <span className="text-2xl font-black tracking-wider">{subj.name}</span>
-                    {subj.id === 'challenge' && <span className="text-sm font-bold text-white/90">【超難問】1度でも間違えると即死！</span>}
+                  <button key={subj.id} onClick={() => setSelectedSubject(subj.id)} className={`${subj.color} text-white rounded-3xl p-6 shadow-md flex flex-col items-center justify-center gap-3 ${subj.id === 'challenge' ? 'col-span-2' : ''}`}>
+                    <span className="text-5xl">{subj.icon}</span>
+                    <span className="text-2xl font-black">{subj.name}</span>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="animate-fade-in bg-white rounded-3xl p-4 shadow-lg border-2 border-gray-100 relative">
-                <button 
-                  onClick={() => setSelectedSubject(null)}
-                  className="absolute -top-4 -left-2 bg-gray-800 text-white w-10 h-10 rounded-full font-black shadow-md flex items-center justify-center hover:bg-gray-700"
-                >
-                  ◀
-                </button>
-                
-                <div className={`text-center font-black text-2xl mb-4 ${SUBJECTS.find(s=>s.id===selectedSubject).color} text-transparent bg-clip-text`}>
-                  {SUBJECTS.find(s=>s.id===selectedSubject).name} の試練
-                </div>
-                
+              <div className="bg-white rounded-3xl p-4 shadow-lg border-2 border-gray-100 relative">
+                <button onClick={() => setSelectedSubject(null)} className="absolute -top-4 -left-2 bg-gray-800 text-white w-10 h-10 rounded-full font-black">◀</button>
+                <div className="text-center font-black text-2xl mb-4 text-blue-600">{SUBJECTS.find(s=>s.id===selectedSubject).name} の試練</div>
                 <div className="flex flex-col gap-3">
                   {GRADES.map(grade => (
-                    <button
-                      key={grade.id}
-                      onClick={() => onSelectBattle({ subject: selectedSubject, grade: grade })}
-                      className="bg-gray-50 hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-400 p-4 rounded-2xl font-black text-lg text-gray-700 flex justify-between items-center transition-all active:scale-95"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-blue-500">▶</span> {grade.name}
-                      </div>
-                      <div className="flex flex-col items-end text-xs">
-                        <span className="text-green-600">EXP +{grade.expReward}</span>
-                        <span className="text-yellow-600">🪙 +{grade.coinReward}</span>
-                      </div>
+                    <button key={grade.id} onClick={() => onSelectBattle({ subject: selectedSubject, grade: grade })} className="bg-gray-50 border-2 border-gray-200 p-4 rounded-2xl font-black text-lg flex justify-between items-center">
+                      <span>▶ {grade.name}</span>
                     </button>
                   ))}
                 </div>
@@ -726,21 +604,10 @@
             )}
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 pb-6 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-50">
-            <button className="flex flex-col items-center text-blue-600 font-bold scale-110">
-              <span className="text-2xl">🗺️</span>
-              <span className="text-[10px]">マップ</span>
-            </button>
-            <button onClick={onShop} className="flex flex-col items-center text-gray-400 hover:text-gray-600 transition-colors">
-              <span className="text-2xl">🏪</span>
-              <span className="text-[10px]">ショップ・そうび</span>
-            </button>
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 pb-6 z-50">
+            <button className="flex flex-col items-center text-blue-600 font-bold">🗺️ マップ</button>
+            <button onClick={onShop} className="flex flex-col items-center text-gray-400">🏪 ショップ</button>
           </div>
-
-          <style>{`
-            .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-          `}</style>
         </div>
       );
     }
@@ -749,11 +616,11 @@
       const [gachaResult, setGachaResult] = useState(null);
 
       const handleBuy = (item, type) => {
-        if (profile.coins >= item.price) {
+        if ((profile.coins || 0) >= item.price) {
           saveProfile({
             ...profile,
             coins: profile.coins - item.price,
-            ownedItems: [...profile.ownedItems, item.id]
+            ownedItems: [...(profile.ownedItems || []), item.id]
           });
         }
       };
@@ -761,13 +628,13 @@
       const handleEquip = (itemId, type) => {
         saveProfile({
           ...profile,
-          equipped: { ...profile.equipped, [type]: itemId }
+          equipped: { ...(profile.equipped || {}), [type]: itemId }
         });
       };
 
       const handleGacha = () => {
-        const cost = 500; // 500コインに変更
-        if (profile.coins < cost) return;
+        const cost = 500;
+        if ((profile.coins || 0) < cost) return;
 
         const pool = [
           ...ITEMS.head.filter(i => i.id !== 'h_none'),
@@ -776,143 +643,74 @@
           ...PETS.filter(p => p.id !== 'p_none').map(p => ({ ...p, isPet: true }))
         ];
         
-        const rand = Math.random() * 100;
-        let targetRank = 'N';
-        if (rand < 2) targetRank = 'UR';
-        else if (rand < 10) targetRank = 'SSR';
-        else if (rand < 30) targetRank = 'SR';
-        else if (rand < 60) targetRank = 'R';
-        
-        let targetPool = pool.filter(i => i.rank === targetRank);
-        if (targetPool.length === 0) targetPool = pool;
-
-        const item = targetPool[Math.floor(Math.random() * targetPool.length)];
-
+        const item = pool[Math.floor(Math.random() * pool.length)];
         let newProfile = { ...profile, coins: profile.coins - cost };
         
         if (item.isPet) {
           if (!newProfile.ownedPets) newProfile.ownedPets = ['p_none'];
-          if (!newProfile.ownedPets.includes(item.id)) {
-            newProfile.ownedPets.push(item.id);
-          }
+          if (!newProfile.ownedPets.includes(item.id)) newProfile.ownedPets.push(item.id);
         } else {
-          if (!newProfile.ownedItems.includes(item.id)) {
-            newProfile.ownedItems.push(item.id);
-          }
+          if (!newProfile.ownedItems) newProfile.ownedItems = [];
+          if (!newProfile.ownedItems.includes(item.id)) newProfile.ownedItems.push(item.id);
         }
 
         setGachaResult(item);
         saveProfile(newProfile);
-        
         setTimeout(() => setGachaResult(null), 3000);
       };
 
-      const getEquippedItem = (type) => ITEMS[type].find(i => i.id === profile.equipped?.[type]) || ITEMS[type][0];
-      const getEquippedPet = () => PETS.find(p => p.id === profile.equipped?.pet) || PETS[0];
+      const headItem = safeGetEquippedItem(profile, 'head');
+      const bodyItem = safeGetEquippedItem(profile, 'body');
+      const weaponItem = safeGetEquippedItem(profile, 'weapon');
+      const petItem = safeGetEquippedPet(profile);
 
       return (
         <div className="min-h-screen bg-orange-50 p-4 font-sans pb-24 relative overflow-hidden">
           {gachaResult && (
-            <div className={`absolute inset-0 z-50 flex items-center justify-center bg-black/60`}>
-              <div className={`bg-white p-8 rounded-3xl text-center animate-bounce shadow-2xl border-4 ${RANK_STYLES[gachaResult.rank].border}`}>
-                 <div className={`text-xl font-black mb-2 ${RANK_STYLES[gachaResult.rank].color}`}>{RANK_STYLES[gachaResult.rank].label}</div>
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
+              <div className="bg-white p-8 rounded-3xl text-center shadow-2xl">
                  <div className="text-6xl mb-4">{gachaResult.emoji}</div>
                  <div className="text-2xl font-black text-orange-600 mb-2">{gachaResult.name} をゲット！</div>
-                 <div className="text-gray-500 font-bold">やったね！</div>
               </div>
             </div>
           )}
 
           <div className="flex justify-between items-center mb-6">
-            <button onClick={onBack} className="bg-white p-2 rounded-full shadow-md font-black text-gray-600 px-4">◀ もどる</button>
-            <div className="bg-white px-4 py-2 rounded-full font-black text-yellow-600 shadow-md flex items-center gap-2 text-xl">
-              <span>🪙</span> {profile.coins}
-            </div>
+            <button onClick={onBack} className="bg-white p-2 rounded-full shadow-md font-black px-4">◀ もどる</button>
+            <div className="bg-white px-4 py-2 rounded-full font-black text-yellow-600 shadow-md">🪙 {profile.coins || 0}</div>
           </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-md mb-6 flex flex-col items-center border-2 border-orange-200">
-            <div className="text-sm font-bold text-gray-500 mb-2">げんざいの そうび</div>
+          <div className="bg-white rounded-3xl p-6 shadow-md mb-6 flex flex-col items-center">
             <div className="text-6xl relative flex items-center justify-center h-24 w-24">
-              <span className="absolute -top-4 z-30">{getEquippedItem('head').emoji !== '🧑' ? getEquippedItem('head').emoji : ''}</span>
+              <span className="absolute -top-4 z-30">{headItem.emoji !== '🧑' ? headItem.emoji : ''}</span>
               <span className="z-20">🧑</span>
-              <span className="absolute -bottom-2 z-30">{getEquippedItem('body').emoji !== '👕' ? getEquippedItem('body').emoji : ''}</span>
-              <span className="absolute -right-4 top-2 z-40 transform rotate-12">{getEquippedItem('weapon').emoji !== '✊' ? getEquippedItem('weapon').emoji : ''}</span>
-              <span className="absolute -left-6 bottom-0 z-10 text-4xl">{getEquippedPet().emoji !== '🐾' ? getEquippedPet().emoji : ''}</span>
+              <span className="absolute -bottom-2 z-30">{bodyItem.emoji !== '👕' ? bodyItem.emoji : ''}</span>
+              <span className="absolute -right-4 top-2 z-40">{weaponItem.emoji !== '✊' ? weaponItem.emoji : ''}</span>
+              <span className="absolute -left-6 bottom-0 z-10 text-4xl">{petItem.emoji !== '🐾' ? petItem.emoji : ''}</span>
             </div>
           </div>
 
-          <div className="mb-8">
-            <button 
-              onClick={handleGacha}
-              disabled={profile.coins < 500}
-              className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 disabled:from-gray-300 disabled:to-gray-400 text-white font-black text-2xl py-4 rounded-2xl shadow-[0_6px_0_#c2410c] disabled:shadow-none active:translate-y-2 transition-all flex justify-center items-center gap-2"
-            >
-              <span>🎁</span> 500コインで ガチャをまわす！
-            </button>
-          </div>
-
-          <div className="mb-8">
-            <h3 className="text-xl font-black text-gray-800 mb-3 border-l-4 border-orange-400 pl-2">おともペット (ガチャでゲット)</h3>
-            <div className="flex overflow-x-auto gap-4 pb-4 px-1 snap-x">
-              {PETS.map(pet => {
-                const isOwned = profile.ownedPets?.includes(pet.id);
-                const isEquipped = profile.equipped?.pet === pet.id;
-                return (
-                  <div key={pet.id} className={`snap-center flex-shrink-0 w-36 bg-white rounded-2xl p-4 shadow-sm border-2 flex flex-col items-center justify-between ${isEquipped ? 'border-green-400 bg-green-50' : RANK_STYLES[pet.rank].border + ' ' + RANK_STYLES[pet.rank].bg}`}>
-                    <div className="flex justify-between w-full mb-1">
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-sm bg-white border ${RANK_STYLES[pet.rank].color}`}>{RANK_STYLES[pet.rank].label}</span>
-                      <span className="text-[10px] font-bold text-gray-500">MP+{pet.bonus}</span>
-                    </div>
-                    <div className="text-4xl mb-2">{pet.emoji}</div>
-                    <div className="font-bold text-sm text-center mb-2 h-10 flex items-center justify-center">{pet.name}</div>
-                    {isEquipped ? (
-                      <div className="text-xs font-black text-green-600 bg-white px-2 py-1 rounded-full border border-green-200 w-full text-center">おとも中</div>
-                    ) : isOwned ? (
-                      <button onClick={() => handleEquip(pet.id, 'pet')} className="text-xs font-black text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full w-full text-center transition-colors">おともする</button>
-                    ) : (
-                      <div className="text-xs font-black text-gray-400 bg-gray-100 px-2 py-1 rounded-full w-full text-center">未入手</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <button onClick={handleGacha} disabled={(profile.coins || 0) < 500} className="w-full bg-orange-500 disabled:bg-gray-300 text-white font-black text-2xl py-4 rounded-2xl mb-8">
+            🎁 500コインで ガチャをまわす！
+          </button>
 
           {['weapon', 'head', 'body'].map(type => (
             <div key={type} className="mb-8">
-              <h3 className="text-xl font-black text-gray-800 mb-3 border-l-4 border-orange-400 pl-2">
-                {type === 'head' ? 'ぼうし (HPアップ)' : type === 'body' ? 'ふく (ぼうぎょアップ)' : 'ぶき (こうげきアップ)'}
-              </h3>
-              <div className="flex overflow-x-auto gap-4 pb-4 px-1 snap-x">
+              <h3 className="text-xl font-black mb-3">{type === 'head' ? 'ぼうし' : type === 'body' ? 'ふく' : 'ぶき'}</h3>
+              <div className="flex overflow-x-auto gap-4 pb-4">
                 {ITEMS[type].map(item => {
-                  const isOwned = profile.ownedItems.includes(item.id);
+                  const isOwned = (profile.ownedItems || []).includes(item.id);
                   const isEquipped = profile.equipped?.[type] === item.id;
-
                   return (
-                    <div key={item.id} className={`snap-center flex-shrink-0 w-36 bg-white rounded-2xl p-4 shadow-sm border-2 flex flex-col items-center justify-between ${isEquipped ? 'border-green-400 bg-green-50' : RANK_STYLES[item.rank].border + ' ' + RANK_STYLES[item.rank].bg}`}>
-                      <div className="flex justify-between w-full mb-1">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-sm bg-white border ${RANK_STYLES[item.rank].color}`}>{RANK_STYLES[item.rank].label}</span>
-                        <span className="text-[10px] font-bold text-gray-500">
-                          {type === 'head' ? `HP+${item.bonus}` : type === 'body' ? `防御+${item.bonus}` : `攻撃+${item.bonus}`}
-                        </span>
-                      </div>
+                    <div key={item.id} className="w-36 bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center flex-shrink-0">
                       <div className="text-4xl mb-2">{item.emoji}</div>
-                      <div className="font-bold text-sm text-center mb-2 h-10 flex items-center justify-center">{item.name}</div>
-                      
+                      <div className="font-bold text-sm mb-2">{item.name}</div>
                       {isEquipped ? (
-                        <div className="text-xs font-black text-green-600 bg-white px-2 py-1 rounded-full border border-green-200 w-full text-center">そうび中</div>
+                        <div className="text-xs font-black text-green-600">そうび中</div>
                       ) : isOwned ? (
-                        <button onClick={() => handleEquip(item.id, type)} className="text-xs font-black text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full w-full text-center transition-colors">
-                          そうびする
-                        </button>
+                        <button onClick={() => handleEquip(item.id, type)} className="text-xs font-black text-blue-600">そうびする</button>
                       ) : (
-                        <button 
-                          onClick={() => handleBuy(item, type)} 
-                          disabled={profile.coins < item.price}
-                          className={`text-xs font-black px-2 py-1 rounded-full w-full text-center transition-all ${profile.coins >= item.price ? 'bg-yellow-400 hover:bg-yellow-500 text-white shadow-sm' : 'bg-gray-200 text-gray-400'}`}
-                        >
-                          🪙 {item.price}
-                        </button>
+                        <button onClick={() => handleBuy(item, type)} disabled={(profile.coins || 0) < item.price} className="text-xs font-black bg-yellow-400 px-3 py-1 rounded-full">🪙 {item.price}</button>
                       )}
                     </div>
                   );
@@ -924,24 +722,129 @@
       );
     }
 
-    // ==========================================
-    // バトル画面（プレフェッチ・完全AI優先ロジック搭載）
-    // ==========================================
     function BattleScreen({ profile, saveProfile, params, allQuestions, onEnd }) {
-      const levelData = useMemo(() => getLevelData(profile.exp), [profile.exp]);
+      const levelData = useMemo(() => getLevelData(profile?.exp || 0), [profile]);
       
-      const equippedHead = ITEMS.head.find(i => i.id === profile.equipped?.head) || ITEMS.head[0];
-      const equippedBody = ITEMS.body.find(i => i.id === profile.equipped?.body) || ITEMS.body[0];
-      const equippedWeapon = ITEMS.weapon.find(i => i.id === profile.equipped?.weapon) || ITEMS.weapon[0];
-      const equippedPet = PETS.find(p => p.id === profile.equipped?.pet) || PETS[0];
+      const headItem = safeGetEquippedItem(profile, 'head');
+      const bodyItem = safeGetEquippedItem(profile, 'body');
+      const weaponItem = safeGetEquippedItem(profile, 'weapon');
+      const petItem = safeGetEquippedPet(profile);
 
-      const totalMaxHp = levelData.maxHp + equippedHead.bonus;
-      const totalMaxMp = levelData.maxMp + equippedPet.bonus;
-      const totalBaseDamage = levelData.baseDamage + equippedWeapon.bonus;
-      const defenseBonus = equippedBody.bonus;
+      const totalMaxHp = levelData.maxHp + headItem.bonus;
+      const totalMaxMp = levelData.maxMp + petItem.bonus;
+      const totalBaseDamage = levelData.baseDamage + weaponItem.bonus;
 
       const [phase, setPhase] = useState('intro');
       const [enemy, setEnemy] = useState(null);
       const [playerHp, setPlayerHp] = useState(totalMaxHp);
       const [playerMp, setPlayerMp] = useState(0); 
-      const [enemyHp
+      const [enemyHp, setEnemyHp] = useState(0);
+      
+      const [currentQ, setCurrentQ] = useState(null);
+      const [options, setOptions] = useState([]);
+      const [askedQuestions, setAskedQuestions] = useState([]);
+      const questionQueueRef = useRef([]);
+
+      const fetchSingleQuestion = async (history) => {
+        const isChallenge = params.subject === 'challenge';
+        const subjectObj = SUBJECTS.find(s => s.id === params.subject) || SUBJECTS[0];
+        const gradeObj = GRADES.find(g => g.id === params.grade.id) || GRADES[0];
+
+        if (geminiApiKey) {
+          const aiRes = await generateQuestionWithAI(subjectObj.name, gradeObj.name, history, isChallenge);
+          if (aiRes) return { ...aiRes, subject: params.subject, grade: params.grade.id };
+        }
+
+        if (params.subject === 'sansu' && !isChallenge) return generateMathQuestion(params.grade.id);
+
+        const pool = BUILT_IN_QUESTIONS.filter(q => q.subject === params.subject);
+        return pool[Math.floor(Math.random() * pool.length)] || generateMathQuestion(params.grade.id);
+      };
+
+      useEffect(() => {
+        const enemyBase = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
+        setEnemy(enemyBase);
+        setEnemyHp(enemyBase.hp);
+
+        const initQuestions = async () => {
+          const firstQ = await fetchSingleQuestion([]);
+          setCurrentQ(firstQ);
+          setAskedQuestions([firstQ.q]);
+          setupQuestionOptions(firstQ);
+          setPhase('question');
+        };
+
+        setTimeout(() => initQuestions(), 1500);
+      }, []);
+
+      const setupQuestionOptions = (q) => {
+        const opts = shuffleArray([
+          { text: q.correct, isCorrect: true },
+          { text: q.w1, isCorrect: false },
+          { text: q.w2, isCorrect: false },
+          { text: q.w3, isCorrect: false },
+        ]);
+        setOptions(opts);
+      };
+
+      const handleAnswer = (opt) => {
+        if (opt.isCorrect) {
+          const dmg = totalBaseDamage + 10;
+          const newHp = Math.max(0, enemyHp - dmg);
+          setEnemyHp(newHp);
+          if (newHp <= 0) {
+            setPhase('clear');
+            saveProfile({ ...profile, exp: (profile.exp || 0) + 20, coins: (profile.coins || 0) + 15 });
+          } else {
+            fetchSingleQuestion(askedQuestions).then(nextQ => {
+              setCurrentQ(nextQ);
+              setupQuestionOptions(nextQ);
+            });
+          }
+        } else {
+          setPlayerHp(prev => Math.max(0, prev - 10));
+        }
+      };
+
+      if (phase === 'intro') {
+        return (
+          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center text-white">
+            <h2 className="text-4xl font-black text-red-500 mb-2">バトル開始！</h2>
+          </div>
+        );
+      }
+
+      return (
+        <div className="fixed inset-0 bg-gray-900 text-white flex flex-col justify-between p-4">
+          <div className="flex flex-col items-center">
+            <div className="text-xl font-bold">{enemy?.name} (HP: {enemyHp})</div>
+            <img src={enemy?.img} className="w-40 h-40 object-contain my-4" />
+          </div>
+
+          <div className="bg-white text-gray-900 rounded-3xl p-6 shadow-xl">
+            {phase === 'question' && currentQ && (
+              <div>
+                <h3 className="text-xl font-black mb-4 text-center">{currentQ.q}</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {options.map((opt, i) => (
+                    <button key={i} onClick={() => handleAnswer(opt)} className="bg-gray-100 p-4 rounded-xl font-bold hover:bg-blue-100">{opt.text}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {phase === 'clear' && (
+              <div className="text-center">
+                <h2 className="text-3xl font-black text-yellow-500 mb-4">勝利！</h2>
+                <button onClick={onEnd} className="bg-yellow-500 text-white font-black px-6 py-3 rounded-xl">マップへ</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
