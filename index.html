@@ -66,19 +66,20 @@
       { id: 'g5', name: '小学5年', expReward: 60, coinReward: 40 },
     ];
 
+    // 絵柄のリアル化（Robohash等の自動生成APIを利用）
     const MONSTERS = [
-      { name: 'ゴブリン', emoji: '👺', hp: 30, damage: 5, isBoss: false },
-      { name: 'スライム', emoji: '💧', hp: 20, damage: 3, isBoss: false },
-      { name: 'スケルトン', emoji: '💀', hp: 40, damage: 8, isBoss: false },
-      { name: 'さまようよろい', emoji: '🛡️', hp: 50, damage: 10, isBoss: false },
-      { name: 'ポイズンスネーク', emoji: '🐍', hp: 35, damage: 12, isBoss: false },
+      { name: 'ゴブリン', image: 'https://robohash.org/goblin?set=set2&size=300x300', hp: 30, damage: 5, isBoss: false },
+      { name: 'スライム', image: 'https://robohash.org/slime?set=set2&size=300x300', hp: 20, damage: 3, isBoss: false },
+      { name: 'スケルトン', image: 'https://robohash.org/skeleton?set=set2&size=300x300', hp: 40, damage: 8, isBoss: false },
+      { name: 'さまようよろい', image: 'https://robohash.org/armor?set=set2&size=300x300', hp: 50, damage: 10, isBoss: false },
+      { name: 'ポイズンスネーク', image: 'https://robohash.org/snake?set=set2&size=300x300', hp: 35, damage: 12, isBoss: false },
     ];
 
     const BOSSES = [
-      { name: '暗黒竜ダークバハムート', emoji: '🐉', hp: 150, damage: 20, isBoss: true, desc: 'すべてを焼き尽くす絶望の竜' },
-      { name: '深淵の悪魔王', emoji: '👿', hp: 180, damage: 25, isBoss: true, desc: '地獄から這い出た恐怖の大王' },
-      { name: '古代兵器オメガ', emoji: '🤖', hp: 200, damage: 30, isBoss: true, desc: '滅びをもたらす機械の神' },
-      { name: '暴君ティラノス', emoji: '🦖', hp: 160, damage: 22, isBoss: true, desc: 'ジュラ紀の頂点に立つ捕食者' },
+      { name: '暗黒竜ダークバハムート', image: 'https://robohash.org/dragon?set=set3&size=300x300', hp: 150, damage: 20, isBoss: true, desc: 'すべてを焼き尽くす絶望の竜' },
+      { name: '深淵の悪魔王', image: 'https://robohash.org/demon?set=set3&size=300x300', hp: 180, damage: 25, isBoss: true, desc: '地獄から這い出た恐怖の大王' },
+      { name: '古代兵器オメガ', image: 'https://robohash.org/omega?set=set3&size=300x300', hp: 200, damage: 30, isBoss: true, desc: '滅びをもたらす機械の神' },
+      { name: '暴君ティラノス', image: 'https://robohash.org/trex?set=set2&bgset=bg1&size=300x300', hp: 160, damage: 22, isBoss: true, desc: 'ジュラ紀の頂点に立つ捕食者' },
     ];
 
     const RANK_STYLES = {
@@ -89,41 +90,42 @@
       'UR': { color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-400', label: 'UR' },
     };
 
+    // アイテム価格をインフレ調整（約5倍）
     const ITEMS = {
       head: [
         { id: 'h_none', name: 'なし', emoji: '🧑', price: 0, rank: 'N', bonus: 0 },
-        { id: 'h_cap', name: '赤白ぼうし', emoji: '🧢', price: 30, rank: 'N', bonus: 5 },
-        { id: 'h_ribbon', name: 'リボン', emoji: '🎀', price: 50, rank: 'N', bonus: 10 },
-        { id: 'h_helmet', name: 'てつのカブト', emoji: '🪖', price: 100, rank: 'R', bonus: 20 },
-        { id: 'h_magician', name: '魔法使いの帽子', emoji: '🧙', price: 200, rank: 'R', bonus: 30 },
-        { id: 'h_crown', name: '王冠', emoji: '👑', price: 300, rank: 'SR', bonus: 50 },
-        { id: 'h_ninja', name: '忍者の頭巾', emoji: '🥷', price: 350, rank: 'SR', bonus: 40 },
-        { id: 'h_pirate', name: '海賊帽', emoji: '🏴‍☠️', price: 400, rank: 'SR', bonus: 60 },
-        { id: 'h_ghost', name: 'おばけ布', emoji: '👻', price: 300, rank: 'SR', bonus: 45 },
-        { id: 'h_dragon', name: '竜騎士の兜', emoji: '🐉', price: 800, rank: 'SSR', bonus: 100 },
-        { id: 'h_halo', name: '天使の輪', emoji: '👼', price: 1000, rank: 'UR', bonus: 150 },
+        { id: 'h_cap', name: '赤白ぼうし', emoji: '🧢', price: 150, rank: 'N', bonus: 5 },
+        { id: 'h_ribbon', name: 'リボン', emoji: '🎀', price: 250, rank: 'N', bonus: 10 },
+        { id: 'h_helmet', name: 'てつのカブト', emoji: '🪖', price: 500, rank: 'R', bonus: 20 },
+        { id: 'h_magician', name: '魔法使いの帽子', emoji: '🧙', price: 1000, rank: 'R', bonus: 30 },
+        { id: 'h_crown', name: '王冠', emoji: '👑', price: 1500, rank: 'SR', bonus: 50 },
+        { id: 'h_ninja', name: '忍者の頭巾', emoji: '🥷', price: 1750, rank: 'SR', bonus: 40 },
+        { id: 'h_pirate', name: '海賊帽', emoji: '🏴‍☠️', price: 2000, rank: 'SR', bonus: 60 },
+        { id: 'h_ghost', name: 'おばけ布', emoji: '👻', price: 1500, rank: 'SR', bonus: 45 },
+        { id: 'h_dragon', name: '竜騎士の兜', emoji: '🐉', price: 4000, rank: 'SSR', bonus: 100 },
+        { id: 'h_halo', name: '天使の輪', emoji: '👼', price: 5000, rank: 'UR', bonus: 150 },
       ],
       body: [
         { id: 'b_none', name: 'ふだんぎ', emoji: '👕', price: 0, rank: 'N', bonus: 0 },
-        { id: 'b_apron', name: 'エプロン', emoji: '🎽', price: 40, rank: 'N', bonus: 2 },
-        { id: 'b_armor', name: 'てつのよろい', emoji: '🛡️', price: 120, rank: 'R', bonus: 5 },
-        { id: 'b_ninja', name: 'にんじゃのふく', emoji: '🥷', price: 200, rank: 'R', bonus: 8 },
-        { id: 'b_robe', name: 'まほうのローブ', emoji: '👘', price: 250, rank: 'SR', bonus: 10 },
-        { id: 'b_dress', name: 'お姫様のドレス', emoji: '👗', price: 300, rank: 'SR', bonus: 12 },
-        { id: 'b_hero', name: 'ヒーロースーツ', emoji: '🦸', price: 500, rank: 'SSR', bonus: 20 },
-        { id: 'b_vampire', name: '吸血鬼マント', emoji: '🧛', price: 600, rank: 'SSR', bonus: 25 },
-        { id: 'b_mech', name: 'メカスーツ', emoji: '🤖', price: 1200, rank: 'UR', bonus: 40 },
+        { id: 'b_apron', name: 'エプロン', emoji: '🎽', price: 200, rank: 'N', bonus: 2 },
+        { id: 'b_armor', name: 'てつのよろい', emoji: '🛡️', price: 600, rank: 'R', bonus: 5 },
+        { id: 'b_ninja', name: 'にんじゃのふく', emoji: '🥷', price: 1000, rank: 'R', bonus: 8 },
+        { id: 'b_robe', name: 'まほうのローブ', emoji: '👘', price: 1250, rank: 'SR', bonus: 10 },
+        { id: 'b_dress', name: 'お姫様のドレス', emoji: '👗', price: 1500, rank: 'SR', bonus: 12 },
+        { id: 'b_hero', name: 'ヒーロースーツ', emoji: '🦸', price: 2500, rank: 'SSR', bonus: 20 },
+        { id: 'b_vampire', name: '吸血鬼マント', emoji: '🧛', price: 3000, rank: 'SSR', bonus: 25 },
+        { id: 'b_mech', name: 'メカスーツ', emoji: '🤖', price: 6000, rank: 'UR', bonus: 40 },
       ],
       weapon: [
         { id: 'w_none', name: 'すで', emoji: '✊', price: 0, rank: 'N', bonus: 0 },
-        { id: 'w_ruler', name: '30cmじょうぎ', emoji: '📏', price: 50, rank: 'N', bonus: 3 },
-        { id: 'w_bat', name: '野球のバット', emoji: '🏏', price: 80, rank: 'N', bonus: 5 },
-        { id: 'w_sword', name: 'ゆうしゃの剣', emoji: '🗡️', price: 150, rank: 'R', bonus: 10 },
-        { id: 'w_wand', name: 'まほうの杖', emoji: '🪄', price: 200, rank: 'R', bonus: 15 },
-        { id: 'w_bow', name: '狩人の弓', emoji: '🏹', price: 300, rank: 'SR', bonus: 20 },
-        { id: 'w_axe', name: '戦士の斧', emoji: '🪓', price: 400, rank: 'SR', bonus: 25 },
-        { id: 'w_gun', name: '光線銃', emoji: '🔫', price: 600, rank: 'SSR', bonus: 40 },
-        { id: 'w_excalibur', name: '聖剣エクスカリバー', emoji: '⚔️', price: 1500, rank: 'UR', bonus: 80 },
+        { id: 'w_ruler', name: '30cmじょうぎ', emoji: '📏', price: 250, rank: 'N', bonus: 3 },
+        { id: 'w_bat', name: '野球のバット', emoji: '🏏', price: 400, rank: 'N', bonus: 5 },
+        { id: 'w_sword', name: 'ゆうしゃの剣', emoji: '🗡️', price: 750, rank: 'R', bonus: 10 },
+        { id: 'w_wand', name: 'まほうの杖', emoji: '🪄', price: 1000, rank: 'R', bonus: 15 },
+        { id: 'w_bow', name: '狩人の弓', emoji: '🏹', price: 1500, rank: 'SR', bonus: 20 },
+        { id: 'w_axe', name: '戦士の斧', emoji: '🪓', price: 2000, rank: 'SR', bonus: 25 },
+        { id: 'w_gun', name: '光線銃', emoji: '🔫', price: 3000, rank: 'SSR', bonus: 40 },
+        { id: 'w_excalibur', name: '聖剣エクスカリバー', emoji: '⚔️', price: 7500, rank: 'UR', bonus: 80 },
       ]
     };
 
@@ -138,10 +140,7 @@
     ];
 
     const INITIAL_PROFILE = {
-      name: '',
-      exp: 0,
-      coins: 0,
-      clearedStages: 0,
+      name: '', exp: 0, coins: 0, clearedStages: 0,
       ownedItems: ['h_none', 'b_none', 'w_none'],
       equipped: { head: 'h_none', body: 'b_none', weapon: 'w_none', pet: 'p_none' },
       ownedPets: ['p_none'],
@@ -150,7 +149,7 @@
     };
 
     // ==========================================
-    // 1.5 - 1.6 問題生成ロジック (AIの大改修！)
+    // 1.5 - 1.6 問題生成ロジック (プレフェッチ・教科バグ修正済)
     // ==========================================
     const generateMathQuestion = (grade) => {
       let q = ""; let correct = 0;
@@ -190,57 +189,64 @@
       return { q, correct: String(correct), w1: dummyArr[0], w2: dummyArr[1], w3: dummyArr[2], subject: 'sansu', grade: grade };
     };
 
-    // AIのマンネリを防ぐためのランダムテーマ集
     const AI_THEMES = [
       "日常のふしぎ", "動物・生き物", "宇宙・星", "食べ物・料理", "スポーツ・遊び", 
-      "歴史・昔のひと", "ゲーム風・ファンタジー", "身近な機械や道具", "自然・天気",
-      "なぞなぞ風", "ちょっと笑える状況"
+      "歴史・昔のひと", "ゲーム風・ファンタジー", "身近な機械や道具", "自然・天気", "なぞなぞ風"
     ];
 
     const generateQuestionWithAI = async (subjectName, gradeName, historyList, isChallenge = false) => {
-      if(!geminiApiKey) return null; // APIキーがない場合はすぐ諦める（フォールバックへ）
+      if(!geminiApiKey) return null;
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`;
-      const historyStr = historyList.slice(-15).join(', '); // 履歴を15問に増加
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+      const historyStr = historyList.slice(-15).join(', ');
       const randomTheme = AI_THEMES[Math.floor(Math.random() * AI_THEMES.length)];
 
       let prompt = `あなたは日本の${gradeName}向けの${subjectName}の先生です。
 以下の条件で4択問題を1つ作成してください。
-- 【重要】問題の切り口として「${randomTheme}」に関連づけた、面白くて新鮮な問題文にしてください。（無理のない範囲で）
+- 【重要】問題の切り口として「${randomTheme}」に関連づけた、面白くて新鮮な問題文にしてください。
 - 過去に出題された以下の問題とは「絶対に違う」内容にしてください。
 - 過去の出題: [${historyStr}]
-- 返却は必ず以下のJSONスキーマのみを含めてください。マークダウンの装飾(\`\`\`json)などは不要です。
-- {"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
+- 必ず以下の形式のJSON文字列「だけ」を返してください。前後の説明やマークダウン(\`\`\`json)は絶対に書かないでください。
+{"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
 
       if (isChallenge) {
         prompt = `あなたは超難問を出題するクイズマスターです。
 以下の条件で4択問題を1つ作成してください。
 - ジャンルは問わず、大人が間違えるレベルの非常に難しい問題（難読漢字、複雑な計算、マニアックな理科社会の知識、ひっかけ問題など）にしてください。
-- 【重要】問題の切り口に「${randomTheme}」の要素を少し混ぜて、ユニークな視点の問題にしてください。
+- 【重要】問題の切り口に「${randomTheme}」の要素を少し混ぜてください。
 - 過去に出題された以下の問題とは「絶対に違う」内容にしてください。
 - 過去の出題: [${historyStr}]
-- 返却は必ず以下のJSONスキーマのみを含めてください。マークダウンの装飾(\`\`\`json)などは不要です。
-- {"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
+- 必ず以下の形式のJSON文字列「だけ」を返してください。前後の説明やマークダウン(\`\`\`json)は絶対に書かないでください。
+{"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
       }
 
-      const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } };
+      const payload = { contents: [{ parts: [{ text: prompt }] }] };
+      
       try {
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        
+        if (!response.ok) {
+           console.error("API Request Failed:", await response.text());
+           return null;
+        }
+        
         const result = await response.json();
         if (result.candidates && result.candidates.length > 0) {
-          let jsonStr = result.candidates[0].content.parts[0].text;
-          try {
-            let cleanStr = jsonStr.replace(/```json/gi, '').replace(/```/g, '').trim();
-            if (cleanStr.includes('}\n{') || cleanStr.includes('}{')) cleanStr = `[${cleanStr.replace(/\}\s*\{/g, '},{')}]`;
-            const parsed = JSON.parse(cleanStr);
-            return Array.isArray(parsed) ? parsed[0] : parsed;
-          } catch (parseError) {
-            const match = jsonStr.match(/\{[^{}]*\}/);
-            if (match) return JSON.parse(match[0]);
-            throw parseError;
+          let text = result.candidates[0].content.parts[0].text;
+          
+          // ★AIの返答から確実に { } で囲まれたJSON部分だけを抜き出す最強の抽出ロジック★
+          const firstBrace = text.indexOf('{');
+          const lastBrace = text.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1) {
+             const jsonString = text.substring(firstBrace, lastBrace + 1);
+             try {
+                return JSON.parse(jsonString);
+             } catch (e) {
+                console.error("JSON Parse Error:", e, jsonString);
+             }
           }
         }
-      } catch (error) { console.error("AI Generation Error", error); }
+      } catch (error) { console.error("AI Communication Error", error); }
       return null;
     };
 
@@ -281,20 +287,17 @@
       const [customQuestions, setCustomQuestions] = useState([]);
       const [battleParams, setBattleParams] = useState(null); 
 
-      // 起動時のデータ読み込み処理（Firebase + localStorage）
       useEffect(() => {
         const loadData = async () => {
           const savedProfile = localStorage.getItem('studyQuest_profile');
           if (savedProfile) {
             const localData = JSON.parse(savedProfile);
-            setProfile(localData); // まずローカルを即時反映
-
-            // Firebaseが有効ならクラウドから最新データを取得して上書き
+            setProfile(localData); 
             if (db && localData.name) {
               try {
                 const doc = await db.collection('players').doc(localData.name).get();
                 if (doc.exists) setProfile(doc.data());
-              } catch(e) { console.error("Firebase読み込みエラー", e); }
+              } catch(e) { console.error("Firebase Error", e); }
             }
           }
           const savedQuestions = localStorage.getItem('studyQuest_customQuestions');
@@ -303,14 +306,11 @@
         loadData();
       }, []);
 
-      // セーブ処理（ローカル ＋ クラウド同期）
       const saveProfile = (newProfile) => {
         setProfile(newProfile);
         localStorage.setItem('studyQuest_profile', JSON.stringify(newProfile));
-        
         if (db && newProfile.name) {
-          db.collection('players').doc(newProfile.name).set(newProfile)
-            .catch(err => console.error("Firebase保存エラー:", err));
+          db.collection('players').doc(newProfile.name).set(newProfile).catch(err => console.error(err));
         }
       };
 
@@ -319,28 +319,15 @@
         localStorage.setItem('studyQuest_customQuestions', JSON.stringify(newQuestions));
       };
 
-      const handleCreateProfile = (name) => {
-        saveProfile({ ...INITIAL_PROFILE, name });
-        setView('map');
-      };
+      const handleCreateProfile = (name) => { saveProfile({ ...INITIAL_PROFILE, name }); setView('map'); };
 
       const handleTransfer = async (transferName) => {
-        if (!db) {
-          alert("Firebaseの設定がまだ完了していません。");
-          return;
-        }
+        if (!db) { alert("Firebaseが未設定です。"); return; }
         try {
           const doc = await db.collection('players').doc(transferName).get();
-          if (doc.exists) {
-            saveProfile(doc.data());
-            setView('map');
-            alert("データの引き継ぎに成功しました！");
-          } else {
-            alert("その名前のデータは見つかりませんでした。");
-          }
-        } catch(e) {
-          alert("エラーが発生しました。");
-        }
+          if (doc.exists) { saveProfile(doc.data()); setView('map'); alert("引き継ぎ成功！"); } 
+          else { alert("データが見つかりません。"); }
+        } catch(e) { alert("エラーが発生しました。"); }
       };
 
       if (view === 'title') return <TitleScreen profile={profile} onStart={() => profile ? setView('map') : setView('create')} onTeacher={() => setView('teacher')} onTransfer={handleTransfer} dbReady={!!db} aiReady={!!geminiApiKey} />;
@@ -368,8 +355,6 @@
 
       return (
         <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center font-sans text-white p-4 relative overflow-hidden">
-          
-          {/* AIステータス表示 */}
           <div className="absolute top-4 right-4 bg-gray-800 border border-gray-600 px-3 py-1 rounded-full flex items-center gap-2 text-sm font-bold shadow-md">
             <span>🧠 AI生成:</span>
             {aiReady ? (
@@ -418,7 +403,6 @@
             <span>👨‍🏫</span> 先生モード（問題作成）
           </button>
 
-          {/* 引き継ぎボタン（Firebase設定時のみ強調） */}
           <button onClick={() => setShowTransfer(true)} className={`${dbReady ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-gray-800 text-gray-400'} font-bold py-2 px-6 rounded-lg shadow-md transition-all flex items-center gap-2 text-sm`}>
             <span>☁️</span> データを引き継ぐ (Firebase)
           </button>
@@ -447,18 +431,13 @@
 
       const handleAdd = (e) => {
         e.preventDefault();
-        if (!form.q || !form.correct || !form.w1 || !form.w2 || !form.w3) {
-          alert("すべての項目を入力してください。");
-          return;
-        }
+        if (!form.q || !form.correct || !form.w1 || !form.w2 || !form.w3) { alert("すべて入力してください。"); return; }
         const newQ = { ...form, id: Date.now().toString() };
         saveCustomQuestions([...customQuestions, newQ]);
         setForm({ ...form, q: '', correct: '', w1: '', w2: '', w3: '' });
       };
 
-      const handleDelete = (id) => {
-        saveCustomQuestions(customQuestions.filter(q => q.id !== id));
-      };
+      const handleDelete = (id) => saveCustomQuestions(customQuestions.filter(q => q.id !== id));
 
       return (
         <div className="min-h-screen bg-gray-100 p-4 font-sans text-gray-800 pb-20">
@@ -546,7 +525,6 @@
     function MapScreen({ profile, onSelectBattle, onShop, onBack, saveProfile }) {
       const levelData = getLevelData(profile.exp);
       const [selectedSubject, setSelectedSubject] = useState(null);
-      
       const [idleReward, setIdleReward] = useState(0);
       const [showMissions, setShowMissions] = useState(false);
 
@@ -554,12 +532,8 @@
         const now = Date.now();
         const lastPlay = profile.lastPlayTime || now;
         const mins = Math.floor((now - lastPlay) / 60000);
-        
-        if (mins >= 1) {
-          setIdleReward(Math.min(mins * 2, 1000));
-        } else if (!profile.lastPlayTime) {
-          saveProfile({ ...profile, lastPlayTime: now });
-        }
+        if (mins >= 1) { setIdleReward(Math.min(mins * 2, 1000)); } 
+        else if (!profile.lastPlayTime) { saveProfile({ ...profile, lastPlayTime: now }); }
       }, []);
 
       const handleClaimIdle = () => {
@@ -758,7 +732,7 @@
       };
 
       const handleGacha = () => {
-        const cost = 100;
+        const cost = 500; // ガチャの価格を500にインフレ調整
         if (profile.coins < cost) return;
 
         const pool = [
@@ -835,10 +809,10 @@
           <div className="mb-8">
             <button 
               onClick={handleGacha}
-              disabled={profile.coins < 100}
+              disabled={profile.coins < 500}
               className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 disabled:from-gray-300 disabled:to-gray-400 text-white font-black text-2xl py-4 rounded-2xl shadow-[0_6px_0_#c2410c] disabled:shadow-none active:translate-y-2 transition-all flex justify-center items-center gap-2"
             >
-              <span>🎁</span> 100コインで ガチャをまわす！
+              <span>🎁</span> 500コインで ガチャをまわす！
             </button>
           </div>
 
@@ -915,13 +889,18 @@
       );
     }
 
+    // ==========================================
+    // 5. BattleScreen (プレフェッチ・教科バグ対応版)
+    // ==========================================
     function BattleScreen({ profile, saveProfile, params, allQuestions, onEnd }) {
       const levelData = useMemo(() => getLevelData(profile.exp), [profile.exp]);
       
-      const equippedHead = ITEMS.head.find(i => i.id === profile.equipped.head) || ITEMS.head[0];
-      const equippedBody = ITEMS.body.find(i => i.id === profile.equipped.body) || ITEMS.body[0];
-      const equippedWeapon = ITEMS.weapon.find(i => i.id === profile.equipped.weapon) || ITEMS.weapon[0];
+      const getEquippedItem = (type) => ITEMS[type].find(i => i.id === profile.equipped[type]) || ITEMS[type][0];
       const getEquippedPet = () => PETS.find(p => p.id === profile.equipped.pet) || PETS[0];
+
+      const equippedHead = getEquippedItem('head');
+      const equippedBody = getEquippedItem('body');
+      const equippedWeapon = getEquippedItem('weapon');
 
       const totalMaxHp = levelData.maxHp + equippedHead.bonus;
       const totalMaxMp = levelData.maxMp + getEquippedPet().bonus;
@@ -934,20 +913,17 @@
       const [playerMp, setPlayerMp] = useState(0); 
       const [enemyHp, setEnemyHp] = useState(0);
       
-      const [questionList, setQuestionList] = useState([]);
       const [currentQ, setCurrentQ] = useState(null);
       const [options, setOptions] = useState([]);
       const [askedQuestions, setAskedQuestions] = useState([]);
       
-      // 次の問題をバックグラウンドで事前生成して溜めておくストック（プレフェッチ機能）
+      // 次の問題を裏で準備しておくためのストック
       const nextQuestionStock = useRef(null);
 
       const [combo, setCombo] = useState(0);
       const [qStartTime, setQStartTime] = useState(0);
       const [lastAction, setLastAction] = useState(null);
-
       const correctsRef = useRef(0);
-
       const [shakeTarget, setShakeTarget] = useState(null);
       const [dmgText, setDmgText] = useState(null);
 
@@ -970,72 +946,68 @@
         setEnemy(scaledEnemy);
         setEnemyHp(scaledEnemy.hp);
 
-        let initialQList = [];
-        if (params.subject !== 'sansu' && params.subject !== 'challenge') {
-          initialQList = shuffleArray(allQuestions.filter(q => q.subject === params.subject && q.grade === params.grade.id));
-          setQuestionList(initialQList);
-        }
-
         setTimeout(() => {
-          fetchNextQuestion(initialQList);
+          fetchNextQuestion([]); // 初回問題取得
         }, 2000);
       }, []);
 
-      // バックグラウンドで次の問題をあらかじめ生成しておく関数
-      const prefetchNextQuestion = async (currentAsked, currentQList) => {
+      // 【爆速化】裏側で次の問題を準備しておく関数
+      const prefetchNextQuestion = async (currentAsked) => {
+        if (!geminiApiKey) return;
+        const isChallenge = params.subject === 'challenge';
+        const subjectName = SUBJECTS.find(s => s.id === params.subject)?.name || '国語';
+        try {
+          const q = await generateQuestionWithAI(subjectName, params.grade.name, currentAsked, isChallenge);
+          if (q) {
+            nextQuestionStock.current = { ...q, subject: params.subject, grade: params.grade.id };
+          }
+        } catch (e) { console.error("Prefetch Error", e); }
+      };
+
+      // 問題を表示する処理（教科の混ざりを完全に防ぐ）
+      const fetchNextQuestion = async (currentAskedList = askedQuestions) => {
+        // もし裏で準備済みのストックがあれば、待ち時間0秒で一瞬で表示！
+        if (nextQuestionStock.current && !currentAskedList.includes(nextQuestionStock.current.q)) {
+          const q = nextQuestionStock.current;
+          nextQuestionStock.current = null; // ストックを消費
+          setupQuestionDisplay(q, currentAskedList);
+          return;
+        }
+
+        // ストックがない場合はローディング画面を出して生成
+        setPhase('loading');
         const isChallenge = params.subject === 'challenge';
         const subjectName = SUBJECTS.find(s => s.id === params.subject)?.name || '国語';
         
         let q = null;
-        if ((params.subject !== 'sansu' || isChallenge) && (currentQList.length === 0 || Math.random() < 0.6 || isChallenge)) {
-          q = await generateQuestionWithAI(subjectName, params.grade.name, currentAsked, isChallenge);
+        if (geminiApiKey) {
+          q = await generateQuestionWithAI(subjectName, params.grade.name, currentAskedList, isChallenge);
           if (q) q = { ...q, subject: params.subject, grade: params.grade.id };
         }
-        
+
+        // AI生成失敗時やAI未設定時のフォールバック処理（絶対に教科を混ぜない）
         if (!q) {
           if (params.subject === 'sansu' && !isChallenge) {
             q = generateMathQuestion(params.grade.id);
           } else {
-            let fallbackList = currentQList.length > 0 ? [...currentQList] : shuffleArray(allQuestions.filter(item => item.subject === params.subject && item.grade === params.grade.id));
-            if (fallbackList.length === 0) fallbackList = BUILT_IN_QUESTIONS.filter(item => item.subject === (isChallenge ? 'challenge' : 'kokugo'));
-            q = fallbackList.pop() || generateMathQuestion(params.grade.id);
+            // 現在の教科・学年に絞り込む
+            let qList = allQuestions.filter(item => item.subject === params.subject && item.grade === params.grade.id);
+            if (qList.length === 0) qList = BUILT_IN_QUESTIONS.filter(item => item.subject === params.subject);
+            // それでも無ければ挑戦用の予備等を使う（通常はあり得ない）
+            if (qList.length === 0) qList = BUILT_IN_QUESTIONS.filter(item => item.subject === 'kokugo'); 
+            
+            // まだ出していない問題を探す
+            let unasked = qList.filter(item => !currentAskedList.includes(item.q));
+            if (unasked.length === 0) unasked = qList; // 全て出し尽くしたらループを許容
+            q = unasked[Math.floor(Math.random() * unasked.length)];
           }
         }
-
-        nextQuestionStock.current = q;
+        setupQuestionDisplay(q, currentAskedList);
       };
 
-      const fetchNextQuestion = async (qList = questionList) => {
-        let q = null;
-        
-        // 事前にストックがあれば、待ち時間0で即時採用！
-        if (nextQuestionStock.current && !askedQuestions.includes(nextQuestionStock.current.q)) {
-          q = nextQuestionStock.current;
-          nextQuestionStock.current = null; // ストックを消費
-        } else {
-          // ストックがなければローディングを表示して生成
-          setPhase('loading');
-          const isChallenge = params.subject === 'challenge';
-          if ((params.subject !== 'sansu' || isChallenge) && (qList.length === 0 || Math.random() < 0.5 || isChallenge)) {
-            const subjectName = SUBJECTS.find(s => s.id === params.subject).name;
-            const aiQ = await generateQuestionWithAI(subjectName, params.grade.name, askedQuestions, isChallenge);
-            if (aiQ && !askedQuestions.includes(aiQ.q)) {
-              q = { ...aiQ, subject: params.subject, grade: params.grade.id };
-            }
-          } 
-          if (!q) {
-            if (params.subject === 'sansu' && !isChallenge) {
-              q = generateMathQuestion(params.grade.id);
-            } else {
-              let fallbackList = qList.length > 0 ? [...qList] : shuffleArray(allQuestions.filter(item => item.subject === params.subject && item.grade === params.grade.id));
-              q = fallbackList.pop() || generateMathQuestion(params.grade.id);
-            }
-          }
-        }
-
-        const updatedHistory = [...askedQuestions, q.q];
+      const setupQuestionDisplay = (q, currentAskedList) => {
+        const updatedHistory = [...currentAskedList, q.q];
         setAskedQuestions(updatedHistory);
-
         setCurrentQ(q);
         
         const opts = shuffleArray([
@@ -1050,8 +1022,10 @@
         setPhase('question');
         setQStartTime(Date.now());
 
-        // プレイヤーが今問いている間に、裏で「さらに次の問題」を用意し始める！
-        prefetchNextQuestion(updatedHistory, qList);
+        // ★プレイヤーが問題を解いている間に、裏で「さらに次の問題」を作り始める！★
+        if (geminiApiKey) {
+          prefetchNextQuestion(updatedHistory);
+        }
       };
 
       const handleSkill = (skillType) => {
@@ -1076,19 +1050,7 @@
             setPhase('clear');
             const today = new Date().toLocaleDateString();
             const currentMissions = profile.missions?.date === today ? profile.missions : { date: today, battles: 0, corrects: 0, claimed: [] };
-            
-            saveProfile({
-              ...profile,
-              exp: profile.exp + params.grade.expReward,
-              coins: profile.coins + params.grade.coinReward,
-              clearedStages: (profile.clearedStages || 0) + 1,
-              lastPlayTime: Date.now(),
-              missions: {
-                ...currentMissions,
-                battles: currentMissions.battles + 1,
-                corrects: currentMissions.corrects + correctsRef.current
-              }
-            });
+            saveProfile({ ...profile, exp: profile.exp + params.grade.expReward, coins: profile.coins + params.grade.coinReward, clearedStages: (profile.clearedStages || 0) + 1, lastPlayTime: Date.now(), missions: { ...currentMissions, battles: currentMissions.battles + 1, corrects: currentMissions.corrects + correctsRef.current } });
           } else {
             setPhase('result');
           }
@@ -1105,7 +1067,6 @@
           correctsRef.current += 1;
           const newCombo = combo + 1;
           setCombo(newCombo);
-          
           setPlayerMp(prev => Math.min(totalMaxMp, prev + 10));
           
           let dmg = totalBaseDamage + Math.floor(newCombo * 2.0);
@@ -1114,26 +1075,13 @@
           const newHp = Math.max(0, enemyHp - dmg);
           setEnemyHp(newHp);
           setLastAction({ type: isCritical ? 'critical' : 'correct', damage: dmg });
-          
           triggerShake('enemy', dmg);
           
           if (newHp <= 0) {
             setPhase('clear');
             const today = new Date().toLocaleDateString();
             const currentMissions = profile.missions?.date === today ? profile.missions : { date: today, battles: 0, corrects: 0, claimed: [] };
-
-            saveProfile({
-              ...profile,
-              exp: profile.exp + params.grade.expReward,
-              coins: profile.coins + params.grade.coinReward,
-              clearedStages: (profile.clearedStages || 0) + 1,
-              lastPlayTime: Date.now(),
-              missions: {
-                ...currentMissions,
-                battles: currentMissions.battles + 1,
-                corrects: currentMissions.corrects + correctsRef.current
-              }
-            });
+            saveProfile({ ...profile, exp: profile.exp + params.grade.expReward, coins: profile.coins + params.grade.coinReward, clearedStages: (profile.clearedStages || 0) + 1, lastPlayTime: Date.now(), missions: { ...currentMissions, battles: currentMissions.battles + 1, corrects: currentMissions.corrects + correctsRef.current } });
           } else {
             setPhase('result');
           }
@@ -1143,22 +1091,13 @@
           const newHp = Math.max(0, playerHp - dmg);
           setPlayerHp(newHp);
           setLastAction({ type: 'wrong', damage: dmg });
-          
           triggerShake('player', dmg);
 
           if (newHp <= 0) {
             setPhase('gameover');
             const today = new Date().toLocaleDateString();
             const currentMissions = profile.missions?.date === today ? profile.missions : { date: today, battles: 0, corrects: 0, claimed: [] };
-
-            saveProfile({
-              ...profile,
-              lastPlayTime: Date.now(),
-              missions: {
-                ...currentMissions,
-                corrects: currentMissions.corrects + correctsRef.current
-              }
-            });
+            saveProfile({ ...profile, lastPlayTime: Date.now(), missions: { ...currentMissions, corrects: currentMissions.corrects + correctsRef.current } });
           } else {
             setPhase('result');
           }
@@ -1168,20 +1107,15 @@
       const triggerShake = (target, dmg) => {
         setShakeTarget(target);
         setDmgText({ val: dmg, type: target === 'enemy' ? 'damage' : 'hurt' });
-        setTimeout(() => {
-          setShakeTarget(null);
-          setDmgText(null);
-        }, 800);
+        setTimeout(() => { setShakeTarget(null); setDmgText(null); }, 800);
       };
-
-      const getEquippedItem = (type) => ITEMS[type].find(i => i.id === profile.equipped[type]) || ITEMS[type][0];
 
       if (phase === 'intro') {
         return (
           <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
             {enemy && (
-               <div className="text-center animate-zoom-in">
-                 <div className="text-9xl mb-4 drop-shadow-[0_0_20px_rgba(255,0,0,0.8)] grayscale contrast-150">{enemy.emoji}</div>
+               <div className="text-center animate-zoom-in flex flex-col items-center">
+                 <img src={enemy.image} alt={enemy.name} className="w-64 h-64 object-contain mb-4 drop-shadow-[0_0_30px_rgba(255,0,0,0.8)] filter contrast-125" />
                  <h2 className="text-4xl font-black text-red-500 mb-2">{enemy.name} があらわれた！</h2>
                  {enemy.isBoss && <p className="text-yellow-400 font-bold text-xl animate-pulse">{enemy.desc}</p>}
                </div>
@@ -1224,9 +1158,7 @@
               </div>
               
               <div className="relative">
-                <div className={`text-9xl drop-shadow-[0_10px_20px_rgba(255,0,0,0.3)] grayscale contrast-125 ${enemy?.isBoss ? 'text-[11rem] animate-pulse' : 'animate-float'}`}>
-                  {enemy?.emoji}
-                </div>
+                <img src={enemy?.image} alt={enemy?.name} className={`w-56 h-56 object-contain drop-shadow-[0_10px_20px_rgba(255,0,0,0.3)] filter contrast-125 ${enemy?.isBoss ? 'w-64 h-64 animate-pulse' : 'animate-float'}`} />
                 {dmgText && dmgText.type === 'damage' && (
                   <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-6xl font-black text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] animate-dmg-pop text-stroke z-50">
                     {dmgText.val}
@@ -1398,10 +1330,6 @@
       );
     }
 
-    // ==========================================
-    // ★ ここが抜けていたため画面が真っ白になっていました！ ★
-    // 6. App Rendering (画面への描画指示)
-    // ==========================================
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
     
