@@ -19,7 +19,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
-<body>
+<body class="bg-gray-900">
   <div id="root"></div>
 
   <script type="text/babel">
@@ -35,11 +35,15 @@
     };
 
     let db = null;
-    if (firebaseConfig.apiKey) {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+    try {
+      if (firebaseConfig.apiKey && typeof firebase !== 'undefined') {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        db = firebase.firestore();
       }
-      db = firebase.firestore();
+    } catch (e) {
+      console.warn("Firebase Config Warning:", e);
     }
 
     // ==========================================
@@ -149,6 +153,19 @@
       missions: { date: new Date().toLocaleDateString(), battles: 0, corrects: 0, claimed: [] }
     };
 
+    // セーブデータの安全補正
+    const sanitizeProfile = (raw) => {
+      if (!raw) return null;
+      return {
+        ...INITIAL_PROFILE,
+        ...raw,
+        equipped: { ...INITIAL_PROFILE.equipped, ...(raw.equipped || {}) },
+        ownedItems: Array.isArray(raw.ownedItems) ? raw.ownedItems : ['h_none', 'b_none', 'w_none'],
+        ownedPets: Array.isArray(raw.ownedPets) ? raw.ownedPets : ['p_none'],
+        missions: { ...INITIAL_PROFILE.missions, ...(raw.missions || {}) }
+      };
+    };
+
     const generateMathQuestion = (grade) => {
       let q = ""; let correct = 0;
       const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -187,10 +204,7 @@
       return { q, correct: String(correct), w1: dummyArr[0], w2: dummyArr[1], w3: dummyArr[2], subject: 'sansu', grade: grade };
     };
 
-    const AI_THEMES = [
-      "日常の発見", "動物・植物", "宇宙・科学", "スポーツ", "歴史・冒険", 
-      "食べ物・料理", "生活の工夫", "世界の国々", "言葉あそび", "数字のパズル"
-    ];
+    const AI_THEMES = ["日常の発見", "動物・生き物", "宇宙・科学", "スポーツ", "歴史・冒険", "食べ物", "生活の工夫", "世界の国々", "言葉あそび"];
 
     const generateQuestionWithAI = async (subjectName, gradeName, historyList = [], isChallenge = false) => {
       if (!geminiApiKey) return null;
@@ -218,16 +232,11 @@
 {"q":"問題文","correct":"正解","w1":"間違い1","w2":"間違い2","w3":"間違い3"}`;
       }
 
-      const payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.95 }
-      };
-
       try {
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.95 } })
         });
         
         if (!response.ok) return null;
@@ -244,7 +253,7 @@
           }
         }
       } catch (error) {
-        console.error("AI Error:", error);
+        console.error("AI Generation Warning:", error);
       }
       return null;
     };
@@ -278,7 +287,6 @@
       return newArr;
     };
 
-    // 安全ヘパー関数
     const safeGetEquippedItem = (profile, type) => {
       if (!profile || !profile.equipped || !profile.equipped[type]) return ITEMS[type][0];
       return ITEMS[type].find(i => i.id === profile.equipped[type]) || ITEMS[type][0];
@@ -297,34 +305,44 @@
       const [profile, setProfile] = useState(null);
       const [customQuestions, setCustomQuestions] = useState([]);
       const [battleParams, setBattleParams] = useState(null); 
+      const [isLoading, setIsLoading] = useState(true);
 
       useEffect(() => {
         const loadData = async () => {
-          const savedProfile = localStorage.getItem('studyQuest_profile');
-          if (savedProfile) {
-            const localData = JSON.parse(savedProfile);
-            setProfile(localData);
+          try {
+            const savedProfile = localStorage.getItem('studyQuest_profile');
+            if (savedProfile) {
+              const localData = sanitizeProfile(JSON.parse(savedProfile));
+              setProfile(localData);
 
-            if (db && localData.name) {
-              try {
-                const doc = await db.collection('players').doc(localData.name).get();
-                if (doc.exists) setProfile(doc.data());
-              } catch(e) { console.error("Firebase Error", e); }
+              if (db && localData && localData.name) {
+                try {
+                  const doc = await db.collection('players').doc(localData.name).get();
+                  if (doc.exists) setProfile(sanitizeProfile(doc.data()));
+                } catch(e) { console.warn("Firebase Load Error", e); }
+              }
             }
+            const savedQuestions = localStorage.getItem('studyQuest_customQuestions');
+            if (savedQuestions) setCustomQuestions(JSON.parse(savedQuestions));
+          } catch(e) {
+            console.error("Data Load Error", e);
+          } finally {
+            setIsLoading(false);
           }
-          const savedQuestions = localStorage.getItem('studyQuest_customQuestions');
-          if (savedQuestions) setCustomQuestions(JSON.parse(savedQuestions));
         };
         loadData();
       }, []);
 
       const saveProfile = (newProfile) => {
-        setProfile(newProfile);
-        localStorage.setItem('studyQuest_profile', JSON.stringify(newProfile));
-        
-        if (db && newProfile.name) {
-          db.collection('players').doc(newProfile.name).set(newProfile)
-            .catch(err => console.error("Firebase Error", err));
+        const sanitized = sanitizeProfile(newProfile);
+        setProfile(sanitized);
+        try {
+          localStorage.setItem('studyQuest_profile', JSON.stringify(sanitized));
+          if (db && sanitized.name) {
+            db.collection('players').doc(sanitized.name).set(sanitized).catch(e => console.warn("Firebase Save Error", e));
+          }
+        } catch(e) {
+          console.error("Save Error", e);
         }
       };
 
@@ -350,15 +368,23 @@
         } catch(e) { alert("エラーが発生しました。"); }
       };
 
+      if (isLoading) {
+        return (
+          <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white font-black text-xl">
+            <div className="animate-spin text-5xl mb-4">⚔️</div>
+            <div>ロード中...</div>
+          </div>
+        );
+      }
+
       if (view === 'title') return <TitleScreen profile={profile} onStart={() => profile ? setView('map') : setView('create')} onTeacher={() => setView('teacher')} onTransfer={handleTransfer} dbReady={!!db} aiReady={!!geminiApiKey} />;
-      if (view === 'create') return <CreateScreen onSubmit={handleCreateProfile} onBack={() => setView('title')} />;
+      if (view === 'create') return <CreateScreen onSubmit={handleCreateProfile} onBack={profile ? () => setView('title') : null} />;
       if (view === 'teacher') return <TeacherScreen customQuestions={customQuestions} saveCustomQuestions={saveCustomQuestions} onBack={() => setView('title')} />;
       if (view === 'shop' && profile) return <ShopScreen profile={profile} saveProfile={saveProfile} onBack={() => setView('map')} />;
       if (view === 'battle' && battleParams && profile) return <BattleScreen profile={profile} saveProfile={saveProfile} params={battleParams} allQuestions={[...BUILT_IN_QUESTIONS, ...customQuestions]} onEnd={() => setView('map')} />;
+      if (view === 'map' && profile) return <MapScreen profile={profile} onSelectBattle={(params) => { setBattleParams(params); setView('battle'); }} onShop={() => setView('shop')} onBack={() => setView('title')} saveProfile={saveProfile} />;
       
-      if (profile) return <MapScreen profile={profile} onSelectBattle={(params) => { setBattleParams(params); setView('battle'); }} onShop={() => setView('shop')} onBack={() => setView('title')} saveProfile={saveProfile} />;
-      
-      return <CreateScreen onSubmit={handleCreateProfile} onBack={() => setView('title')} />;
+      return <CreateScreen onSubmit={handleCreateProfile} onBack={null} />;
     }
 
     // ==========================================
@@ -438,7 +464,7 @@
         <div className="min-h-screen bg-indigo-900 flex flex-col items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
             <h2 className="text-2xl font-black text-gray-800 mb-6">きみのなまえは？</h2>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border-4 border-gray-300 rounded-xl p-4 text-2xl font-bold text-center mb-6 focus:border-blue-500 focus:outline-none" placeholder="勇者のなまえ" maxLength={10} />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border-4 border-gray-300 rounded-xl p-4 text-2xl font-bold text-center mb-6 focus:border-blue-500 focus:outline-none text-gray-800" placeholder="勇者のなまえ" maxLength={10} />
             <button onClick={() => name.trim() && onSubmit(name)} disabled={!name.trim()} className="w-full bg-green-500 disabled:bg-gray-300 text-white font-black text-2xl py-4 rounded-xl shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-2 active:shadow-none transition-all">けってい！</button>
             {onBack && <button onClick={onBack} className="mt-4 text-gray-400 font-bold hover:text-gray-600">もどる</button>}
           </div>
@@ -571,7 +597,7 @@
               <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full font-black text-sm flex items-center gap-1">
                 <span>🪙</span> {profile.coins || 0}
               </div>
-              <button onClick={onBack} className="text-gray-400 hover:text-gray-600">✕</button>
+              <button onClick={onBack} className="text-gray-400 hover:text-gray-600 font-black text-lg px-2">✕</button>
             </div>
           </div>
 
@@ -595,7 +621,7 @@
                 <div className="text-center font-black text-2xl mb-4 text-blue-600">{SUBJECTS.find(s=>s.id===selectedSubject).name} の試練</div>
                 <div className="flex flex-col gap-3">
                   {GRADES.map(grade => (
-                    <button key={grade.id} onClick={() => onSelectBattle({ subject: selectedSubject, grade: grade })} className="bg-gray-50 border-2 border-gray-200 p-4 rounded-2xl font-black text-lg flex justify-between items-center">
+                    <button key={grade.id} onClick={() => onSelectBattle({ subject: selectedSubject, grade: grade })} className="bg-gray-50 border-2 border-gray-200 p-4 rounded-2xl font-black text-lg flex justify-between items-center text-gray-800">
                       <span>▶ {grade.name}</span>
                     </button>
                   ))}
@@ -676,7 +702,7 @@
           )}
 
           <div className="flex justify-between items-center mb-6">
-            <button onClick={onBack} className="bg-white p-2 rounded-full shadow-md font-black px-4">◀ もどる</button>
+            <button onClick={onBack} className="bg-white p-2 rounded-full shadow-md font-black px-4 text-gray-800">◀ もどる</button>
             <div className="bg-white px-4 py-2 rounded-full font-black text-yellow-600 shadow-md">🪙 {profile.coins || 0}</div>
           </div>
 
@@ -696,13 +722,13 @@
 
           {['weapon', 'head', 'body'].map(type => (
             <div key={type} className="mb-8">
-              <h3 className="text-xl font-black mb-3">{type === 'head' ? 'ぼうし' : type === 'body' ? 'ふく' : 'ぶき'}</h3>
+              <h3 className="text-xl font-black mb-3 text-gray-800">{type === 'head' ? 'ぼうし' : type === 'body' ? 'ふく' : 'ぶき'}</h3>
               <div className="flex overflow-x-auto gap-4 pb-4">
                 {ITEMS[type].map(item => {
                   const isOwned = (profile.ownedItems || []).includes(item.id);
                   const isEquipped = profile.equipped?.[type] === item.id;
                   return (
-                    <div key={item.id} className="w-36 bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center flex-shrink-0">
+                    <div key={item.id} className="w-36 bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center flex-shrink-0 text-gray-800">
                       <div className="text-4xl mb-2">{item.emoji}</div>
                       <div className="font-bold text-sm mb-2">{item.name}</div>
                       {isEquipped ? (
@@ -710,7 +736,7 @@
                       ) : isOwned ? (
                         <button onClick={() => handleEquip(item.id, type)} className="text-xs font-black text-blue-600">そうびする</button>
                       ) : (
-                        <button onClick={() => handleBuy(item, type)} disabled={(profile.coins || 0) < item.price} className="text-xs font-black bg-yellow-400 px-3 py-1 rounded-full">🪙 {item.price}</button>
+                        <button onClick={() => handleBuy(item, type)} disabled={(profile.coins || 0) < item.price} className="text-xs font-black bg-yellow-400 px-3 py-1 rounded-full text-gray-800">🪙 {item.price}</button>
                       )}
                     </div>
                   );
@@ -737,13 +763,11 @@
       const [phase, setPhase] = useState('intro');
       const [enemy, setEnemy] = useState(null);
       const [playerHp, setPlayerHp] = useState(totalMaxHp);
-      const [playerMp, setPlayerMp] = useState(0); 
       const [enemyHp, setEnemyHp] = useState(0);
       
       const [currentQ, setCurrentQ] = useState(null);
       const [options, setOptions] = useState([]);
       const [askedQuestions, setAskedQuestions] = useState([]);
-      const questionQueueRef = useRef([]);
 
       const fetchSingleQuestion = async (history) => {
         const isChallenge = params.subject === 'challenge';
