@@ -197,44 +197,46 @@
     const generateQuestionWithAI = async (subjectName, gradeName, historyList, isChallenge = false) => {
       if(!geminiApiKey) return null;
 
-      // 最新の安定・高速モデルを使用
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-      const historyStr = historyList.slice(-15).join(', '); // 過去15問を避ける
+      const historyStr = historyList.slice(-15).join(', ');
       const randomTheme = AI_THEMES[Math.floor(Math.random() * AI_THEMES.length)];
-      const randomSeed = Math.floor(Math.random() * 999999); // 強制的に違う発想をさせる
+      const randomSeed = Math.floor(Math.random() * 999999);
 
       let prompt = `あなたは日本の${gradeName}向けの${subjectName}の先生です。
 面白い4択問題を1つ作成してください。
-- 切り口（テーマ）: 「${randomTheme}」
-- 以下の過去に出題された問題とは「絶対に違う」新しい問題を作ること: [${historyStr}]
-- シード値: ${randomSeed}`;
+- テーマ: 「${randomTheme}」
+- 過去の出題リスト（これらとは違う問題にすること）: [${historyStr}]
+- シード値: ${randomSeed}
+
+【重要】返答は必ず以下のJSON形式のみを出力してください。マークダウン（\`\`\`json など）や挨拶などの余計な文章は一切含めないでください。
+{
+  "q": "問題文",
+  "correct": "正解の選択肢",
+  "w1": "ダミーの選択肢1",
+  "w2": "ダミーの選択肢2",
+  "w3": "ダミーの選択肢3"
+}`;
 
       if (isChallenge) {
-        prompt = `あなたは超難問を出題するクイズマスターです。
-大人が間違えるレベルの非常に難しい4択問題を1つ作成してください。
-- ジャンルは問わず、ひっかけや難読漢字、マニアックな知識を問うもの。
-- 切り口（テーマ）: 「${randomTheme}」
-- 以下の過去に出題された問題とは「絶対に違う」新しい問題を作ること: [${historyStr}]
-- シード値: ${randomSeed}`;
+        prompt = `あなたは超難問を出題するクイズマスターです。大人が間違えるレベルの4択問題を1つ作成してください。
+- テーマ: 「${randomTheme}」
+- 過去の出題リスト（これらとは違う問題にすること）: [${historyStr}]
+- シード値: ${randomSeed}
+
+【重要】返答は必ず以下のJSON形式のみを出力してください。マークダウン（\`\`\`json など）や挨拶などの余計な文章は一切含めないでください。
+{
+  "q": "問題文",
+  "correct": "正解の選択肢",
+  "w1": "ダミーの選択肢1",
+  "w2": "ダミーの選択肢2",
+  "w3": "ダミーの選択肢3"
+}`;
       }
 
       const payload = { 
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          responseMimeType: "application/json",
-          // ここが最強の魔法。AIに「この形以外の回答を許さない」と強制する。
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              q: { type: "STRING" },
-              correct: { type: "STRING" },
-              w1: { type: "STRING" },
-              w2: { type: "STRING" },
-              w3: { type: "STRING" }
-            },
-            required: ["q", "correct", "w1", "w2", "w3"]
-          },
-          temperature: 1.2 // 想像力を上げて毎回違う問題を作らせる
+          temperature: 0.9 // フォーマット崩れを防ぐための最も安定した値
         }
       };
       
@@ -242,17 +244,26 @@
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         
         if (!response.ok) {
-           console.error("API Request Failed:", await response.text());
+           console.error("API Error:", await response.text());
            return null;
         }
         
         const result = await response.json();
         if (result.candidates && result.candidates.length > 0) {
-          const text = result.candidates[0].content.parts[0].text;
-          return JSON.parse(text); // schema機能により、必ず綺麗なJSONが返ってくる
+          let text = result.candidates[0].content.parts[0].text;
+          
+          // AIがどんなに余計な言葉を混ぜても強制的にJSONだけを抽出する最強パーサー
+          text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const match = text.match(/\{[\s\S]*\}/); // 最初の { から 最後の } までを抽出
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if(parsed.q && parsed.correct && parsed.w1) {
+              return parsed;
+            }
+          }
         }
       } catch (error) { 
-        console.error("AI Communication Error", error); 
+        console.error("AI Parse Error:", error); 
       }
       return null;
     };
