@@ -153,7 +153,6 @@
       missions: { date: new Date().toLocaleDateString(), battles: 0, corrects: 0, claimed: [] }
     };
 
-    // セーブデータの安全補正
     const sanitizeProfile = (raw) => {
       if (!raw) return null;
       return {
@@ -483,10 +482,6 @@
         setForm({ ...form, q: '', correct: '', w1: '', w2: '', w3: '' });
       };
 
-      const handleDelete = (id) => {
-        saveCustomQuestions(customQuestions.filter(q => q.id !== id));
-      };
-
       return (
         <div className="min-h-screen bg-gray-100 p-4 font-sans text-gray-800 pb-20">
           <div className="max-w-2xl mx-auto">
@@ -768,6 +763,9 @@
       const [currentQ, setCurrentQ] = useState(null);
       const [options, setOptions] = useState([]);
       const [askedQuestions, setAskedQuestions] = useState([]);
+      
+      const questionQueueRef = useRef([]);
+      const isFetchingRef = useRef(false);
 
       const fetchSingleQuestion = async (history) => {
         const isChallenge = params.subject === 'challenge';
@@ -785,6 +783,19 @@
         return pool[Math.floor(Math.random() * pool.length)] || generateMathQuestion(params.grade.id);
       };
 
+      const fillQueue = async () => {
+        if (isFetchingRef.current || questionQueueRef.current.length >= 2) return;
+        isFetchingRef.current = true;
+        try {
+          const nextQ = await fetchSingleQuestion(askedQuestions);
+          if (nextQ) questionQueueRef.current.push(nextQ);
+        } catch (e) {
+          console.error("Prefetch error", e);
+        } finally {
+          isFetchingRef.current = false;
+        }
+      };
+
       useEffect(() => {
         const enemyBase = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
         setEnemy(enemyBase);
@@ -796,6 +807,7 @@
           setAskedQuestions([firstQ.q]);
           setupQuestionOptions(firstQ);
           setPhase('question');
+          fillQueue();
         };
 
         setTimeout(() => initQuestions(), 1500);
@@ -820,10 +832,18 @@
             setPhase('clear');
             saveProfile({ ...profile, exp: (profile.exp || 0) + 20, coins: (profile.coins || 0) + 15 });
           } else {
-            fetchSingleQuestion(askedQuestions).then(nextQ => {
+            let nextQ = questionQueueRef.current.shift();
+            if (!nextQ) {
+              fetchSingleQuestion(askedQuestions).then(q => {
+                setCurrentQ(q);
+                setupQuestionOptions(q);
+                fillQueue();
+              });
+            } else {
               setCurrentQ(nextQ);
               setupQuestionOptions(nextQ);
-            });
+              fillQueue();
+            }
           }
         } else {
           setPlayerHp(prev => Math.max(0, prev - 10));
