@@ -200,13 +200,15 @@
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
       const historyStr = historyList.slice(-15).join(', ');
       const randomTheme = AI_THEMES[Math.floor(Math.random() * AI_THEMES.length)];
+      const randomSeed = Math.floor(Math.random() * 99999);
 
       let prompt = `あなたは日本の${gradeName}向けの${subjectName}の先生です。
 以下の条件で4択問題を1つ作成してください。
 - 【重要】問題の切り口として「${randomTheme}」に関連づけた、面白くて新鮮な問題文にしてください。
-- 過去に出題された以下の問題とは「絶対に違う」内容にしてください。
 - 過去の出題: [${historyStr}]
-- 必ず以下の形式のJSON文字列「だけ」を返してください。前後の説明やマークダウン(\`\`\`json)は絶対に書かないでください。
+- 過去の出題とは「絶対に違う」内容にしてください。
+- シード値: ${randomSeed} (この値が違うたびに全く新しい発想をしてください)
+- 必ず以下の形式のJSONデータだけを返してください。
 {"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
 
       if (isChallenge) {
@@ -214,13 +216,20 @@
 以下の条件で4択問題を1つ作成してください。
 - ジャンルは問わず、大人が間違えるレベルの非常に難しい問題（難読漢字、複雑な計算、マニアックな理科社会の知識、ひっかけ問題など）にしてください。
 - 【重要】問題の切り口に「${randomTheme}」の要素を少し混ぜてください。
-- 過去に出題された以下の問題とは「絶対に違う」内容にしてください。
 - 過去の出題: [${historyStr}]
-- 必ず以下の形式のJSON文字列「だけ」を返してください。前後の説明やマークダウン(\`\`\`json)は絶対に書かないでください。
+- 過去の出題とは「絶対に違う」内容にしてください。
+- シード値: ${randomSeed}
+- 必ず以下の形式のJSONデータだけを返してください。
 {"q": "問題文", "correct": "正解", "w1": "不正解1", "w2": "不正解2", "w3": "不正解3"}`;
       }
 
-      const payload = { contents: [{ parts: [{ text: prompt }] }] };
+      const payload = { 
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 1.2
+        }
+      };
       
       try {
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -233,16 +242,13 @@
         const result = await response.json();
         if (result.candidates && result.candidates.length > 0) {
           let text = result.candidates[0].content.parts[0].text;
-          
-          // ★AIの返答から確実に { } で囲まれたJSON部分だけを抜き出す最強の抽出ロジック★
-          const firstBrace = text.indexOf('{');
-          const lastBrace = text.lastIndexOf('}');
-          if (firstBrace !== -1 && lastBrace !== -1) {
-             const jsonString = text.substring(firstBrace, lastBrace + 1);
-             try {
-                return JSON.parse(jsonString);
-             } catch (e) {
-                console.error("JSON Parse Error:", e, jsonString);
+          try {
+             return JSON.parse(text);
+          } catch (e) {
+             const firstBrace = text.indexOf('{');
+             const lastBrace = text.lastIndexOf('}');
+             if (firstBrace !== -1 && lastBrace !== -1) {
+                return JSON.parse(text.substring(firstBrace, lastBrace + 1));
              }
           }
         }
@@ -252,18 +258,27 @@
 
     const BUILT_IN_QUESTIONS = [
       { subject: 'kokugo', grade: 'g1_2', q: "「やま」の漢字はどれ？", correct: "山", w1: "川", w2: "田", w3: "石" },
+      { subject: 'kokugo', grade: 'g1_2', q: "「いぬ」の漢字はどれ？", correct: "犬", w1: "大", w2: "太", w3: "木" },
+      { subject: 'kokugo', grade: 'g1_2', q: "「あおい」の漢字はどれ？", correct: "青い", w1: "赤い", w2: "白い", w3: "黒い" },
       { subject: 'kokugo', grade: 'g3', q: "「図書館」の読み方は？", correct: "としょかん", w1: "としょうかん", w2: "ずしょかん", w3: "ずしょうかん" },
+      { subject: 'kokugo', grade: 'g3', q: "反対の意味：「朝」の反対は？", correct: "夜", w1: "昼", w2: "夕", w3: "暗" },
       { subject: 'kokugo', grade: 'g4', q: "「温かい」の反対の意味の言葉は？", correct: "冷たい", w1: "寒い", w2: "涼しい", w3: "熱い" },
+      { subject: 'kokugo', grade: 'g4', q: "ことわざ：「猿も木から〇〇」", correct: "落ちる", w1: "飛ぶ", w2: "滑る", w3: "逃げる" },
       { subject: 'kokugo', grade: 'g5', q: "「準備」の正しい読み方は？", correct: "じゅんび", w1: "しゅんぴ", w2: "じゅんぴ", w3: "しゅんび" },
+      { subject: 'kokugo', grade: 'g5', q: "四字熟語：「一石〇鳥」", correct: "二", w1: "三", w2: "四", w3: "一" },
       { subject: 'rika', grade: 'g1_2', q: "だんごむしは、つっつくとどうなる？", correct: "まるくなる", w1: "はやく走る", w2: "とぶ", w3: "なく" },
+      { subject: 'rika', grade: 'g1_2', q: "あさがおが咲くのはいつ？", correct: "夏", w1: "春", w2: "秋", w3: "冬" },
       { subject: 'rika', grade: 'g3', q: "じしゃくにくっつくものは？", correct: "鉄", w1: "プラスチック", w2: "木", w3: "ガラス" },
+      { subject: 'rika', grade: 'g3', q: "虫メガネで太陽の光を集めると？", correct: "熱くなる", w1: "冷たくなる", w2: "暗くなる", w3: "虹ができる" },
       { subject: 'rika', grade: 'g4', q: "水が氷になるときの温度は？", correct: "0度", w1: "100度", w2: "50度", w3: "-100度" },
       { subject: 'rika', grade: 'g5', q: "植物の発芽に必要なのは、水、空気と？", correct: "適当な温度", w1: "肥料", w2: "日光", w3: "土" },
       { subject: 'syakai', grade: 'g1_2', q: "手紙を配達してくれる人は？", correct: "郵便屋さん", w1: "警察官", w2: "消防士", w3: "お医者さん" },
+      { subject: 'syakai', grade: 'g1_2', q: "火事のときに火を消す人は？", correct: "消防士", w1: "警察官", w2: "先生", w3: "運転手" },
       { subject: 'syakai', grade: 'g3', q: "地図記号の「文」が表すのは？", correct: "学校", w1: "交番", w2: "病院", w3: "郵便局" },
       { subject: 'syakai', grade: 'g4', q: "日本で一番広い都道府県は？", correct: "北海道", w1: "東京都", w2: "大阪府", w3: "沖縄県" },
       { subject: 'syakai', grade: 'g5', q: "米の生産量が日本一多い都道府県は？", correct: "新潟県", w1: "秋田県", w2: "北海道", w3: "青森県" },
       { subject: 'challenge', grade: 'g5', q: "1から100までの整数をすべて足すといくつになる？", correct: "5050", w1: "5000", w2: "5100", w3: "5500" },
+      { subject: 'challenge', grade: 'g5', q: "日本の最も南にある島は？", correct: "沖ノ鳥島", w1: "南鳥島", w2: "与那国島", w3: "択捉島" },
     ];
 
     const getLevelData = (totalExp) => {
