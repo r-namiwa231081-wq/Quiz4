@@ -46,7 +46,7 @@
     // ★ Gemini (AI) 設定エリア ★
     // ここにGoogle AI Studioで取得したAPIキーを入力してください
     // ==========================================
-    const geminiApiKey = "AQ.Ab8RN6LNKNMESsU6O3SzBl-_Vm4KPQVsFhPIZmCJMVuv_6or4Q"; 
+    const geminiApiKey = ""; 
 
     // ==========================================
     // 1. Game Data & Constants
@@ -921,10 +921,10 @@
       const equippedHead = ITEMS.head.find(i => i.id === profile.equipped.head) || ITEMS.head[0];
       const equippedBody = ITEMS.body.find(i => i.id === profile.equipped.body) || ITEMS.body[0];
       const equippedWeapon = ITEMS.weapon.find(i => i.id === profile.equipped.weapon) || ITEMS.weapon[0];
-      const equippedPet = PETS.find(p => p.id === profile.equipped.pet) || PETS[0];
+      const getEquippedPet = () => PETS.find(p => p.id === profile.equipped.pet) || PETS[0];
 
       const totalMaxHp = levelData.maxHp + equippedHead.bonus;
-      const totalMaxMp = levelData.maxMp + equippedPet.bonus;
+      const totalMaxMp = levelData.maxMp + getEquippedPet().bonus;
       const totalBaseDamage = levelData.baseDamage + equippedWeapon.bonus;
       const defenseBonus = equippedBody.bonus;
 
@@ -939,6 +939,9 @@
       const [options, setOptions] = useState([]);
       const [askedQuestions, setAskedQuestions] = useState([]);
       
+      // 次の問題をバックグラウンドで事前生成して溜めておくストック（プレフェッチ機能）
+      const nextQuestionStock = useRef(null);
+
       const [combo, setCombo] = useState(0);
       const [qStartTime, setQStartTime] = useState(0);
       const [lastAction, setLastAction] = useState(null);
@@ -978,50 +981,60 @@
         }, 2000);
       }, []);
 
-      const fetchNextQuestion = async (qList = questionList) => {
-        setPhase('loading');
-        let q = null;
-        let attempts = 0;
-        const maxAttempts = 3;
+      // バックグラウンドで次の問題をあらかじめ生成しておく関数
+      const prefetchNextQuestion = async (currentAsked, currentQList) => {
         const isChallenge = params.subject === 'challenge';
+        const subjectName = SUBJECTS.find(s => s.id === params.subject)?.name || '国語';
+        
+        let q = null;
+        if ((params.subject !== 'sansu' || isChallenge) && (currentQList.length === 0 || Math.random() < 0.6 || isChallenge)) {
+          q = await generateQuestionWithAI(subjectName, params.grade.name, currentAsked, isChallenge);
+          if (q) q = { ...q, subject: params.subject, grade: params.grade.id };
+        }
+        
+        if (!q) {
+          if (params.subject === 'sansu' && !isChallenge) {
+            q = generateMathQuestion(params.grade.id);
+          } else {
+            let fallbackList = currentQList.length > 0 ? [...currentQList] : shuffleArray(allQuestions.filter(item => item.subject === params.subject && item.grade === params.grade.id));
+            if (fallbackList.length === 0) fallbackList = BUILT_IN_QUESTIONS.filter(item => item.subject === (isChallenge ? 'challenge' : 'kokugo'));
+            q = fallbackList.pop() || generateMathQuestion(params.grade.id);
+          }
+        }
 
-        while (!q && attempts < maxAttempts) {
-          attempts++;
-          
+        nextQuestionStock.current = q;
+      };
+
+      const fetchNextQuestion = async (qList = questionList) => {
+        let q = null;
+        
+        // 事前にストックがあれば、待ち時間0で即時採用！
+        if (nextQuestionStock.current && !askedQuestions.includes(nextQuestionStock.current.q)) {
+          q = nextQuestionStock.current;
+          nextQuestionStock.current = null; // ストックを消費
+        } else {
+          // ストックがなければローディングを表示して生成
+          setPhase('loading');
+          const isChallenge = params.subject === 'challenge';
           if ((params.subject !== 'sansu' || isChallenge) && (qList.length === 0 || Math.random() < 0.5 || isChallenge)) {
             const subjectName = SUBJECTS.find(s => s.id === params.subject).name;
             const aiQ = await generateQuestionWithAI(subjectName, params.grade.name, askedQuestions, isChallenge);
             if (aiQ && !askedQuestions.includes(aiQ.q)) {
-               q = { ...aiQ, subject: params.subject, grade: params.grade.id };
+              q = { ...aiQ, subject: params.subject, grade: params.grade.id };
             }
           } 
-          
           if (!q) {
             if (params.subject === 'sansu' && !isChallenge) {
-              const mathQ = generateMathQuestion(params.grade.id);
-              if (!askedQuestions.includes(mathQ.q)) {
-                q = mathQ;
-              }
+              q = generateMathQuestion(params.grade.id);
             } else {
-              let fallbackList = qList.length > 0 ? [...qList] : shuffleArray(allQuestions.filter(q => q.subject === params.subject && q.grade === params.grade.id));
-              if (fallbackList.length === 0) fallbackList = BUILT_IN_QUESTIONS.filter(q => q.subject === (isChallenge ? 'challenge' : 'kokugo'));
-              while (fallbackList.length > 0) {
-                const candidate = fallbackList.pop();
-                if (!askedQuestions.includes(candidate.q)) {
-                  q = candidate;
-                  setQuestionList(fallbackList);
-                  break;
-                }
-              }
-              if (!q) {
-                 setAskedQuestions([]);
-                 q = fallbackList.pop() || generateMathQuestion(params.grade.id);
-              }
+              let fallbackList = qList.length > 0 ? [...qList] : shuffleArray(allQuestions.filter(item => item.subject === params.subject && item.grade === params.grade.id));
+              q = fallbackList.pop() || generateMathQuestion(params.grade.id);
             }
           }
         }
 
-        if (q) setAskedQuestions(prev => [...prev, q.q]);
+        const updatedHistory = [...askedQuestions, q.q];
+        setAskedQuestions(updatedHistory);
 
         setCurrentQ(q);
         
@@ -1036,6 +1049,9 @@
         setLastAction(null);
         setPhase('question');
         setQStartTime(Date.now());
+
+        // プレイヤーが今問いている間に、裏で「さらに次の問題」を用意し始める！
+        prefetchNextQuestion(updatedHistory, qList);
       };
 
       const handleSkill = (skillType) => {
@@ -1159,7 +1175,6 @@
       };
 
       const getEquippedItem = (type) => ITEMS[type].find(i => i.id === profile.equipped[type]) || ITEMS[type][0];
-      const getEquippedPet = () => PETS.find(p => p.id === profile.equipped.pet) || PETS[0];
 
       if (phase === 'intro') {
         return (
